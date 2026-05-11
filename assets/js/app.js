@@ -241,6 +241,7 @@ async function apiRequest(action, payload = {}) {
     const response = await fetch(API_URL, {
         method: 'POST',
         headers,
+        credentials: 'include',
         body: requestBody
     });
     const data = await response.json().catch(() => ({ ok: false, message: 'Invalid API response.' }));
