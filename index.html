@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Work Management</title>
+    <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" href="#dashboard" aria-label="Work Management Dashboard">
+        <img src="assets/img/work-management-logo.svg" alt="Work Management">
+    </a>
+    <nav class="nav" id="nav" hidden>
+        <a href="#dashboard" data-permission="dashboard.view">Dashboard</a>
+        <a href="#users" data-permission="users.view">Users</a>
+        <a href="#developers" data-permission="developers.view">Developers</a>
+        <a href="#roles" data-permission="roles.view">Roles</a>
+        <a href="#projects" data-permission="task.view">Projects</a>
+        <a href="#task-assignments" data-permission="task.assignments.view">Task Assignments</a>
+        <a href="#worklogs" data-permission="developers.worklogs.view">Work Logs</a>
+        <a href="#dev-work-logs" data-permission="developers.work_logs.view">Dev Work Logs</a>
+        <span id="current-user"></span>
+        <button class="link-button" id="logout-button" type="button">Logout</button>
+    </nav>
+</header>
+
+<main class="container">
+    <div class="flash" id="flash" hidden></div>
+    <div class="error" id="error" hidden></div>
+
+    <section class="login-shell" id="login-view">
+        <div class="login-card">
+            <div class="login-brand">
+                <img src="assets/img/work-management-logo.svg" alt="Work Management">
+            </div>
+            <div class="login-copy">
+                <h1>Sign in</h1>
+                <p>Access projects, task activity, assignments, and work logs.</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <label for="login-email">Email</label>
+                <input id="login-email" name="email" type="email" value="admin@example.com" autocomplete="email" required>
+
+                <label for="login-password">Password</label>
+                <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+
+                <button type="submit">Sign in</button>
+            </form>
+            <p class="login-note">Use your administrator credentials to continue.</p>
+        </div>
+        <aside class="login-side-panel">
+            <span>Secure workspace</span>
+            <h2>Signed API access for every request.</h2>
+            <p>Sessions, roles, task logs, and activity history stay behind verified requests.</p>
+            <div class="login-side-list">
+                <div><strong>Roles</strong><small>Permission-based access</small></div>
+                <div><strong>Tasks</strong><small>Activity and work log tracking</small></div>
+                <div><strong>Reports</strong><small>User and developer hours</small></div>
+            </div>
+        </aside>
+    </section>
+
+    <section id="app-view" hidden>
+        <section class="panel view" id="dashboard-view">
+            <div class="page-title">
+                <h1>Dashboard</h1>
+                <p id="dashboard-welcome"></p>
+            </div>
+            <div class="kpi-grid">
+                <div class="stat primary">
+                    <span>Open tasks</span>
+                    <strong id="stat-open-tasks">0</strong>
+                    <small id="stat-task-summary">0 total tasks</small>
+                </div>
+                <div class="stat success">
+                    <span>Completed</span>
+                    <strong id="stat-done-tasks">0</strong>
+                    <small id="stat-completed-summary">Done tasks</small>
+                </div>
+                <div class="stat primary">
+                    <span>In progress</span>
+                    <strong id="stat-in-progress-tasks">0</strong>
+                    <small id="stat-active-today-summary">0 active today</small>
+                </div>
+                <div class="stat">
+                    <span>Todo</span>
+                    <strong id="stat-todo-tasks">0</strong>
+                    <small>Ready to start</small>
+                </div>
+                <div class="stat warning">
+                    <span>Blocked</span>
+                    <strong id="stat-blocked-tasks">0</strong>
+                    <small id="stat-critical-summary">0 critical</small>
+                </div>
+                <div class="stat">
+                    <span>Assigned tasks</span>
+                    <strong id="stat-assigned-tasks">0</strong>
+                    <small id="stat-assigned-summary">0 unassigned</small>
+                </div>
+                <div class="stat warning">
+                    <span>No developer</span>
+                    <strong id="stat-no-developer-tasks">0</strong>
+                    <small>Tasks missing dev owner</small>
+                </div>
+                <div class="stat success">
+                    <span>Completion rate</span>
+                    <strong id="stat-completion-rate">0%</strong>
+                    <small id="stat-average-hours">0h average per task</small>
+                </div>
+                <div class="stat">
+                    <span>Today hours</span>
+                    <strong id="stat-today-hours">0h</strong>
+                    <small>Logged today</small>
+                </div>
+                <div class="stat">
+                    <span>Week hours</span>
+                    <strong id="stat-week-hours">0h</strong>
+                    <small>This week logged</small>
+                </div>
+                <div class="stat">
+                    <span>Total hours</span>
+                    <strong id="stat-total-hours">0h</strong>
+                    <small>All visible work logs</small>
+                </div>
+                <div class="stat">
+                    <span>Projects</span>
+                    <strong id="stat-projects">0</strong>
+                    <small id="stat-project-summary">0 active</small>
+                </div>
+                <div class="stat primary">
+                    <span>My projects</span>
+                    <strong id="stat-my-projects">0</strong>
+                    <small>Where I am a member</small>
+                </div>
+                <div class="stat primary">
+                    <span>My assigned tasks</span>
+                    <strong id="stat-my-tasks">0</strong>
+                    <small id="stat-my-open-tasks">0 open</small>
+                </div>
+                <div class="stat">
+                    <span>My hours</span>
+                    <strong id="stat-my-hours">0h</strong>
+                    <small id="stat-my-today-hours">0h today</small>
+                </div>
+                <div class="stat">
+                    <span>My activity</span>
+                    <strong id="stat-my-work-logs">0</strong>
+                    <small id="stat-my-activity">0 comments</small>
+                </div>
+                <div class="stat">
+                    <span>Developers</span>
+                    <strong id="stat-developers">0</strong>
+                    <small id="stat-developer-summary">0 active</small>
+                </div>
+                <div class="stat">
+                    <span>Users</span>
+                    <strong id="stat-users">0</strong>
+                    <small id="stat-user-summary">0 active</small>
+                </div>
+                <div class="stat">
+                    <span>Roles</span>
+                    <strong id="stat-roles">0</strong>
+                    <small id="stat-permissions">0 permissions</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel view" id="users-view" hidden>
+            <div class="section-header">
+                <div class="page-title">
+                    <h1>Users</h1>
+                    <p>Manage access, roles, and account status.</p>
+                </div>
+                <button id="new-user-button" type="button" data-permission="users.create">New User</button>
+            </div>
+            <div class="table-card">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Employee ID</th>
+                        <th>Job Position</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="users-table"></tbody>
+                </table>
+                <div class="pagination" id="users-pagination"></div>
+            </div>
+        </section>
+
+        <section class="panel view" id="roles-view" hidden>
+            <div class="section-header">
+                <div class="page-title">
+                    <h1>Roles</h1>
+                    <p>Control what each role can see and change.</p>
+                </div>
+                <button id="new-role-button" type="button" data-permission="roles.manage">New Role</button>
+            </div>
+            <div class="table-card">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Name</th>
+                        <th>Permissions</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="roles-table"></tbody>
+                </table>
+                <div class="pagination" id="roles-pagination"></div>
+            </div>
+        </section>
+
+        <section class="panel view" id="developers-view" hidden>
+            <div class="section-header">
+                <div class="page-title">
+                    <h1>Developers</h1>
+                    <p>Create developers and connect tasks to git usernames.</p>
+                </div>
+                <button id="new-developer-button" type="button" data-permission="developers.create">New Developer</button>
+            </div>
+            <div class="table-card compact-table-card developer-table-card">
+                <table class="developer-table">
+                    <thead>
+                    <tr>
+                        <th>Developer</th>
+                        <th>Git username</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="developers-table"></tbody>
+                </table>
+                <div class="pagination" id="developers-pagination"></div>
+            </div>
+        </section>
+
+        <section class="panel view" id="worklogs-view" hidden>
+            <div class="section-header">
+                <div class="page-title">
+                    <h1>Worklogs</h1>
+                    <p>User-wise logged hours by project and day.</p>
+                </div>
+                <button id="refresh-worklog-report" type="button" data-permission="developers.worklogs.view">View Report</button>
+            </div>
+            <div class="report-toolbar">
+                <label>
+                    User or Group
+                    <select id="worklog-user-filter"></select>
+                </label>
+                <label>
+                    Date from
+                    <input id="worklog-date-from" type="date">
+                </label>
+                <label>
+                    Date to
+                    <input id="worklog-date-to" type="date">
+                </label>
+            </div>
+            <div class="table-card report-table-card">
+                <table class="worklog-report-table">
+                    <thead id="worklogs-head"></thead>
+                    <tbody id="worklogs-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel view" id="dev-work-logs-view" hidden>
+            <div class="section-header">
+                <div class="page-title">
+                    <h1>Developer Worklogs</h1>
+                    <p>Developer-wise logged hours by user, project, and day.</p>
+                </div>
+                <button id="refresh-dev-worklogs-report" type="button" data-permission="developers.work_logs.view">View Report</button>
+            </div>
+            <div class="report-toolbar">
+                <label>
+                    Developer
+                    <select id="dev-worklogs-developer-filter"></select>
+                </label>
+                <label>
+                    Date from
+                    <input id="dev-worklogs-date-from" type="date">
+                </label>
+                <label>
+                    Date to
+                    <input id="dev-worklogs-date-to" type="date">
+                </label>
+            </div>
+            <div class="table-card report-table-card">
+                <table class="worklog-report-table">
+                    <thead id="dev-worklogs-head"></thead>
+                    <tbody id="dev-work-logs-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel view" id="task-assignments-view" hidden>
+            <div class="section-header">
+                <div class="page-title">
+                    <h1>Task Assignments</h1>
+                    <p>Today active tasks by user and developer.</p>
+                </div>
+                <button id="refresh-task-assignments-report" type="button" data-permission="task.assignments.view">View Report</button>
+            </div>
+            <div class="report-toolbar">
+                <label>
+                    User
+                    <select id="task-assignment-user-filter"></select>
+                </label>
+                <label>
+                    Developer
+                    <select id="task-assignment-developer-filter"></select>
+                </label>
+                <label>
+                    Date from
+                    <input id="task-assignment-date-from" type="date">
+                </label>
+                <label>
+                    Date to
+                    <input id="task-assignment-date-to" type="date">
+                </label>
+            </div>
+            <div class="table-card report-table-card">
+                <table class="worklog-report-table">
+                    <thead>
+                    <tr>
+                        <th>Work date</th>
+                        <th>User</th>
+                        <th>Task</th>
+                        <th>Project</th>
+                        <th>Developers</th>
+                        <th>Time logged that day</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                    </tr>
+                    </thead>
+                    <tbody id="task-assignments-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel view" id="projects-view" hidden>
+            <div class="section-header">
+                <div class="page-title">
+                    <h1>Projects</h1>
+                    <p>Create projects, add tasks, log time, and review activity.</p>
+                </div>
+                <div class="actions">
+                    <button id="import-tasks-button" type="button" data-permission="task.create">Import Tasks</button>
+                    <button id="new-project-button" type="button" data-permission="projects.create">New Project</button>
+                </div>
+            </div>
+            <form class="task-search-bar" id="task-search-form">
+                <label for="task-search-id">Find task activity</label>
+                <div class="task-search-controls">
+                    <input id="task-search-id" name="task_id" placeholder="FDCM-123" autocomplete="off" required>
+                    <button id="task-search-button" type="submit" data-permission="task.view">Search</button>
+                </div>
+                <p id="task-search-result" class="search-result-text"></p>
+            </form>
+            <div class="project-board" id="project-board"></div>
+            <div class="pagination" id="projects-pagination"></div>
+        </section>
+    </section>
+</main>
+
+<div class="modal-backdrop" id="project-modal" hidden>
+    <section class="modal">
+        <div class="modal-header">
+            <h2 id="project-modal-title">Project</h2>
+            <button class="icon-button" data-close-modal="project-modal" type="button">x</button>
+        </div>
+        <form id="project-form">
+            <input name="id" type="hidden" value="0">
+
+            <label for="project-key">Project key</label>
+            <input id="project-key" name="key" placeholder="DEMO" required>
+
+            <label for="project-name">Name</label>
+            <input id="project-name" name="name" required>
+
+            <label for="project-owner">Owner</label>
+            <input id="project-owner" name="owner">
+
+            <label for="project-status">Status</label>
+            <select id="project-status" name="status">
+                <option>Active</option>
+                <option>Paused</option>
+                <option>Done</option>
+            </select>
+
+            <label>Members</label>
+            <div class="checkbox-list" id="project-member-list"></div>
+
+            <label for="project-description">Description</label>
+            <textarea id="project-description" name="description" rows="4"></textarea>
+
+            <div class="form-actions">
+                <button id="save-project-button" type="submit" data-permission="projects.create">Save project</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div class="modal-backdrop" id="user-modal" hidden>
+    <section class="modal">
+        <div class="modal-header">
+            <div>
+                <h2 id="user-form-title">New User</h2>
+                <p>Create or update account access.</p>
+            </div>
+            <button class="icon-button" data-close-modal="user-modal" type="button">x</button>
+        </div>
+        <form id="user-form">
+            <input name="id" type="hidden" value="0">
+
+            <div class="form-grid">
+                <div>
+                    <label for="user-name">Name</label>
+                    <input id="user-name" name="name" required>
+                </div>
+
+                <div>
+                    <label for="user-employee-id">Employee ID</label>
+                    <input id="user-employee-id" name="employee_id" placeholder="SLS001" required>
+                </div>
+
+                <div>
+                    <label for="user-job-position">Job Position</label>
+                    <input id="user-job-position" name="job_position" required>
+                </div>
+
+                <div>
+                    <label for="user-email">Email</label>
+                    <input id="user-email" name="email" type="email" required>
+                </div>
+
+                <div>
+                    <label for="user-password">Password</label>
+                    <input id="user-password" name="password" type="password">
+                </div>
+
+                <div>
+                    <label for="user-role">Role</label>
+                    <select id="user-role" name="role" required></select>
+                </div>
+            </div>
+
+            <label class="inline compact-check">
+                <input name="active" type="checkbox" checked>
+                Active
+            </label>
+
+            <div class="form-actions">
+                <button id="save-user-button" type="submit" data-permission="users.create">Save user</button>
+                <button class="secondary" id="cancel-user-edit" type="button">Cancel</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div class="modal-backdrop" id="role-modal" hidden>
+    <section class="modal large-modal">
+        <div class="modal-header">
+            <div>
+                <h2 id="role-form-title">New Role</h2>
+                <p>Select only the permissions this role needs.</p>
+            </div>
+            <button class="icon-button" data-close-modal="role-modal" type="button">x</button>
+        </div>
+        <form id="role-form">
+            <input name="original_key" type="hidden">
+
+            <div class="form-grid">
+                <div>
+                    <label for="role-key">Role key</label>
+                    <input id="role-key" name="key" placeholder="manager" required>
+                </div>
+
+                <div>
+                    <label for="role-name">Role name</label>
+                    <input id="role-name" name="name" placeholder="Manager" required>
+                </div>
+            </div>
+
+            <label>Permissions</label>
+            <div class="checkbox-list" id="permission-list"></div>
+
+            <div class="form-actions">
+                <button id="save-role-button" type="submit" data-permission="roles.manage">Save role</button>
+                <button class="secondary" id="cancel-role-edit" type="button">Cancel</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div class="modal-backdrop" id="developer-modal" hidden>
+    <section class="modal">
+        <div class="modal-header">
+            <div>
+                <h2 id="developer-form-title">New Developer</h2>
+                <p>Developer records are separate from login users.</p>
+            </div>
+            <button class="icon-button" data-close-modal="developer-modal" type="button">x</button>
+        </div>
+        <form id="developer-form">
+            <input name="id" type="hidden" value="0">
+
+            <div class="form-grid">
+                <div>
+                    <label for="developer-name">Developer name</label>
+                    <input id="developer-name" name="name" required>
+                </div>
+
+                <div>
+                    <label for="developer-git-username">Git username</label>
+                    <input id="developer-git-username" name="git_username" placeholder="octocat" required>
+                </div>
+            </div>
+
+            <label class="inline compact-check">
+                <input name="active" type="checkbox" checked>
+                Active
+            </label>
+
+            <div class="form-actions">
+                <button id="save-developer-button" type="submit" data-permission="developers.create">Save developer</button>
+                <button class="secondary" id="cancel-developer-edit" type="button">Cancel</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div class="modal-backdrop" id="task-modal" hidden>
+    <section class="modal">
+        <div class="modal-header">
+            <h2 id="task-modal-title">Task</h2>
+            <button class="icon-button" data-close-modal="task-modal" type="button">x</button>
+        </div>
+        <form id="task-form">
+            <input name="id" type="hidden" value="0">
+
+            <label for="task-id">Task ID</label>
+            <input id="task-id" name="task_id" placeholder="TASK-123" required>
+
+            <label for="task-title">Title</label>
+            <input id="task-title" name="title" required>
+
+            <label for="task-project">Project</label>
+            <select id="task-project" name="project_id" required></select>
+
+            <label for="task-status">Status</label>
+            <select id="task-status" name="status">
+                <option>Todo</option>
+                <option>In Progress</option>
+                <option>Blocked</option>
+                <option>Done</option>
+            </select>
+
+            <label for="task-priority">Priority</label>
+            <select id="task-priority" name="priority">
+                <option>Low</option>
+                <option selected>Medium</option>
+                <option>High</option>
+                <option>Critical</option>
+            </select>
+
+            <label for="task-start-date">Start date</label>
+            <input id="task-start-date" name="start_date" type="date">
+
+            <label for="task-completed-date">Completed date</label>
+            <input id="task-completed-date" name="completed_date" type="date">
+
+            <label for="task-assignee">Assignees</label>
+            <select id="task-assignee" name="assignee_ids" multiple></select>
+
+            <label for="task-developers">Developers</label>
+            <select id="task-developers" name="developer_ids" multiple></select>
+
+            <label for="task-description">Description</label>
+            <textarea id="task-description" name="description" rows="4"></textarea>
+
+            <div class="form-actions">
+                <button id="save-task-button" type="submit" data-permission="task.create">Save task</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div class="modal-backdrop" id="task-details-modal" hidden>
+    <section class="modal large-modal">
+        <div class="modal-header">
+            <div>
+                <h2 id="task-details-title">Task details</h2>
+                <p id="task-details-description"></p>
+            </div>
+            <button class="icon-button" data-close-modal="task-details-modal" type="button">x</button>
+        </div>
+        <div class="details-modal-body" id="task-details">
+            <form class="details-form" id="task-time-form" hidden>
+                <input name="id" type="hidden">
+                <div class="form-grid">
+                    <div>
+                        <label for="task-work-date">Work date</label>
+                        <input id="task-work-date" name="work_date" type="date" required>
+                    </div>
+
+                    <div>
+                        <label for="task-worker">Developer</label>
+                        <select id="task-worker" name="developer_id"></select>
+                        <div class="assignment-summary">
+                            <span>Total users: <strong id="task-total-users">0</strong></span>
+                            <span>Assigned users: <strong id="task-assigned-users">0</strong></span>
+                            <span>Total hours: <strong id="task-total-hours">0.00h</strong></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="task-work-project">Project</label>
+                        <input id="task-work-project" name="project" required>
+                    </div>
+
+                    <div>
+                        <label for="task-hours">Hours</label>
+                        <input id="task-hours" name="hours" type="number" min="0.25" max="24" step="0.25" required>
+                    </div>
+                </div>
+
+                <label for="task-work-note">Work note</label>
+                <textarea id="task-work-note" name="note" rows="3"></textarea>
+
+                <div class="form-actions">
+                    <button id="add-time-button" type="submit" data-permission="task.time_log">Add time</button>
+                </div>
+            </form>
+
+            <form class="details-form" id="task-comment-form" hidden>
+                <input name="id" type="hidden">
+                <label for="task-comment">Comment</label>
+                <textarea id="task-comment" name="comment" rows="3" required></textarea>
+                <div class="form-actions">
+                    <button id="add-comment-button" type="submit" data-permission="task.comment">Add comment</button>
+                </div>
+            </form>
+
+            <section class="activity-panel">
+                <div class="activity-heading">
+                    <h3>Activity</h3>
+                </div>
+                <div class="activity-tabs" id="activity-tabs">
+                    <button class="active" data-activity-tab="all" data-permission="task.view" type="button">All</button>
+                    <button data-activity-tab="comments" data-permission="task.view" type="button">Comments</button>
+                    <button data-activity-tab="history" data-permission="task.logs.view" type="button">History</button>
+                    <button data-activity-tab="work" data-permission="task.time_logs.view" type="button">Work log</button>
+                </div>
+                <div class="activity-list" id="task-activity-list"></div>
+            </section>
+        </div>
+    </section>
+</div>
+
+<div class="modal-backdrop" id="task-import-modal" hidden>
+    <section class="modal">
+        <div class="modal-header">
+            <h2>Import Tasks</h2>
+            <button class="icon-button" data-close-modal="task-import-modal" type="button">x</button>
+        </div>
+        <form id="task-import-form">
+            <label for="task-import-text">Task rows</label>
+            <textarea id="task-import-text" name="rows" rows="14" required></textarea>
+            <div class="form-actions">
+                <button id="import-tasks-submit-button" type="submit" data-permission="task.create">Import tasks</button>
+                <button class="secondary" data-close-modal="task-import-modal" type="button">Cancel</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<script src="assets/js/crypto-js.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
