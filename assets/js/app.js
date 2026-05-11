@@ -1,4 +1,4 @@
-const API_URL = 'https://webtechdomains.in/api/v1';
+const API_URL = 'https://api.webtechdomains.in/api/v1';
 const state = {
     user: null,
     csrfToken: '',
