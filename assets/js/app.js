@@ -153,7 +153,7 @@ async function readFileAsAttachment(file) {
 }
 
 async function compressImage(file, quality = 0.7) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const img = new Image();
         const reader = new FileReader();
 
@@ -161,6 +161,7 @@ async function compressImage(file, quality = 0.7) {
             img.src = e.target.result;
         };
 
+        reader.onerror = reject;
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -169,10 +170,24 @@ async function compressImage(file, quality = 0.7) {
             canvas.height = img.height;
 
             ctx.drawImage(img, 0, 0);
-
             canvas.toBlob(
-                blob => resolve(blob),
-                'image/jpeg',
+                blob => {
+                    if (!blob) {
+                        reject(new Error('Compression failed'));
+                        return;
+                    }
+                    // Convert Blob → File
+                    const compressedFile = new File(
+                        [blob],
+                        file.name,
+                        {
+                            type: file.type,
+                            lastModified: Date.now()
+                        }
+                    );
+                    resolve(compressedFile);
+                },
+                file.type,
                 quality
             );
         };
@@ -182,13 +197,16 @@ async function compressImage(file, quality = 0.7) {
 
 async function prepareAttachment(file) {
     let processedFile = file;
+    const compressibleTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+    ];
 
-    // Compress only images
-    if (file.type.startsWith('image/')) {
+    if (compressibleTypes.includes(file.type)) {
         processedFile = await compressImage(file, 0.7);
     }
 
-    // Convert to attachment object
     return await readFileAsAttachment(processedFile);
 }
 
