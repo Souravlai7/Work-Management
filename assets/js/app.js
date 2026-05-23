@@ -1,6 +1,33 @@
-const API_URL = 'https://api.webtechdomains.in/api/v1';
+const API_URL = 'https://webtechdomains.in/work-management/api/';
+const AUTH_TOKEN_KEY = 'work_management_access_token';
+const API_ENDPOINTS = {
+    login: 'login',
+    logout: 'logout',
+    'dashboard.get': 'dashboard',
+    'users.list': 'users',
+    'users.save': 'users/save',
+    'users.delete': 'users/delete',
+    'roles.list': 'roles',
+    'roles.save': 'roles/save',
+    'developers.list': 'developers',
+    'developers.save': 'developers/save',
+    'developers.delete': 'developers/delete',
+    'developers.worklogs': 'developers/worklogs',
+    'developers.work_logs': 'developers/work-logs',
+    'task.assignments': 'tasks/assignments',
+    'task.list': 'tasks',
+    'task.find': 'tasks/find',
+    'task.save': 'tasks/save',
+    'task.bulk_import': 'tasks/bulk-import',
+    'task.time_log': 'tasks/time-log',
+    'task.comment': 'tasks/comment',
+    'task.delete': 'tasks/delete',
+    'projects.save': 'projects/save',
+    'projects.delete': 'projects/delete'
+};
 const state = {
     user: null,
+    authToken: localStorage.getItem(AUTH_TOKEN_KEY) || '',
     csrfToken: '',
     permissions: [],
     roles: {},
@@ -222,26 +249,36 @@ function closeModal(id) {
 }
 
 async function apiRequest(action, payload = {}) {
-    const requestBody = JSON.stringify({ action, ...payload });
+    const endpoint = API_ENDPOINTS[action];
+
+    if (!endpoint) {
+        throw new Error(`Unknown API endpoint: ${action}`);
+    }
+
+    const requestBody = JSON.stringify(payload);
     const headers = {
         'Content-Type': 'application/json'
     };
+    const authToken = state.authToken || localStorage.getItem(AUTH_TOKEN_KEY) || '';
 
-    if (state.csrfToken) {
+    if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
+    }
+
+    if (authToken) {
         const timestamp = Math.floor(Date.now() / 1000).toString();
         const nonce = crypto.randomUUID();
-        const signature = CryptoJS.HmacSHA256(`${timestamp}.${nonce}.${requestBody}`, state.csrfToken).toString();
+        const signature = CryptoJS.HmacSHA256(`${timestamp}.${nonce}.${requestBody}`, authToken).toString();
 
-        headers['X-CSRF-Token'] = state.csrfToken;
+        headers['X-CSRF-Token'] = authToken;
         headers['X-Timestamp'] = timestamp;
         headers['X-Nonce'] = nonce;
         headers['X-Signature'] = signature;
     }
 
-    const response = await fetch(API_URL, {
+    const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers,
-        credentials: 'include',
         body: requestBody
     });
     const data = await response.json().catch(() => ({ ok: false, message: 'Invalid API response.' }));
@@ -255,7 +292,11 @@ async function apiRequest(action, payload = {}) {
 
 function setSession(data) {
     state.user = data.user;
-    state.csrfToken = data.csrf_token || state.csrfToken || '';
+    state.authToken = data.access_token || state.authToken || localStorage.getItem(AUTH_TOKEN_KEY) || '';
+    state.csrfToken = data.csrf_token || state.authToken || '';
+    if (state.authToken) {
+        localStorage.setItem(AUTH_TOKEN_KEY, state.authToken);
+    }
     state.permissions = data.permissions || [];
     state.roles = data.roles || state.roles || {};
 
@@ -273,8 +314,10 @@ function setSession(data) {
 
 function clearSession() {
     state.user = null;
+    state.authToken = '';
     state.csrfToken = '';
     state.permissions = [];
+    localStorage.removeItem(AUTH_TOKEN_KEY);
     document.body.classList.add('login-page');
     document.body.classList.remove('app-page');
     $('#login-view').hidden = false;
@@ -1594,12 +1637,4 @@ $('#task-status').addEventListener('change', syncCompletedDateState);
 
 window.addEventListener('hashchange', route);
 
-(async function boot() {
-    try {
-        const data = await apiRequest('session');
-        setSession(data);
-        await route();
-    } catch (error) {
-        clearSession();
-    }
-})();
+clearSession();
