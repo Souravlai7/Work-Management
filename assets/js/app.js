@@ -133,7 +133,7 @@ function renderAttachments(files = []) {
     `).join('')}</div>`;
 }
 
-function readFileAsAttachment(file) {
+async function readFileAsAttachment(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
 
