@@ -1,5 +1,7 @@
 const API_URL = 'https://webtechdomains.in/work-management/api/';
 const AUTH_TOKEN_KEY = 'work_management_access_token';
+const COMMENT_FILE_LIMIT = 5;
+const COMMENT_FILE_MAX_BYTES = 5 * 1024 * 1024;
 const API_ENDPOINTS = {
     login: 'login',
     logout: 'logout',
@@ -99,6 +101,71 @@ function escapeHtml(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
+}
+
+function formatBytes(bytes) {
+    const size = Number(bytes || 0);
+
+    if (size >= 1024 * 1024) {
+        return `${(size / 1024 / 1024).toFixed(1)} MB`;
+    }
+
+    if (size >= 1024) {
+        return `${Math.ceil(size / 1024)} KB`;
+    }
+
+    return `${size} B`;
+}
+
+function dataUrlForAttachment(file) {
+    return `data:${file.type || 'application/octet-stream'};base64,${file.data || ''}`;
+}
+
+function renderAttachments(files = []) {
+    if (!files.length) {
+        return '';
+    }
+
+    return `<div class="attachment-list">${files.map((file) => `
+        <a class="attachment-link" href="${escapeHtml(dataUrlForAttachment(file))}" download="${escapeHtml(file.name || 'attachment')}">
+            ${escapeHtml(file.name || 'attachment')} <span>${escapeHtml(formatBytes(file.size))}</span>
+        </a>
+    `).join('')}</div>`;
+}
+
+function readFileAsAttachment(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+            const result = String(reader.result || '');
+
+            resolve({
+                name: file.name,
+                type: file.type || 'application/octet-stream',
+                size: file.size,
+                data: result.includes(',') ? result.split(',').pop() : ''
+            });
+        };
+        reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function attachmentsFromInput(input) {
+    const files = Array.from(input.files || []);
+
+    if (files.length > COMMENT_FILE_LIMIT) {
+        throw new Error(`Upload ${COMMENT_FILE_LIMIT} files or fewer.`);
+    }
+
+    files.forEach((file) => {
+        if (file.size > COMMENT_FILE_MAX_BYTES) {
+            throw new Error(`${file.name} is larger than ${formatBytes(COMMENT_FILE_MAX_BYTES)}.`);
+        }
+    });
+
+    return Promise.all(files.map(readFileAsAttachment));
 }
 
 function formatDateTime(value) {
@@ -913,6 +980,7 @@ function showTaskDetails(issue, preserveTab = false) {
     setButtonPermission('#add-comment-button', 'task.comment');
     $('#task-comment-form').elements.id.value = issue.id;
     $('#task-comment-form').elements.comment.value = '';
+    $('#task-comment-form').elements.files.value = '';
     renderTaskActivity();
     openModal('task-details-modal');
 }
@@ -937,7 +1005,8 @@ function renderTaskActivity() {
                 created_at: comment.created_at,
                 html: `<div class="timeline-item comment-item">
                     <div><strong>${escapeHtml(comment.user_name)}</strong> <span>commented ${escapeHtml(formatDateTime(comment.created_at))}</span></div>
-                    <p>${escapeHtml(comment.comment)}</p>
+                    ${comment.comment ? `<p>${escapeHtml(comment.comment)}</p>` : ''}
+                    ${renderAttachments(comment.attachments || [])}
                 </div>`
             });
         });
@@ -1003,7 +1072,7 @@ function activityDetails(log) {
     }
 
     if (log.action === 'commented') {
-        return `<p>${escapeHtml(changes.comment || '')}</p>`;
+        return `${changes.comment ? `<p>${escapeHtml(changes.comment)}</p>` : ''}${changes.attachment_count ? `<p>${escapeHtml(changes.attachment_count)} file(s) attached.</p>` : ''}`;
     }
 
     if (log.action === 'created') {
@@ -1587,11 +1656,18 @@ $('#task-comment-form').addEventListener('submit', async (event) => {
     const form = event.currentTarget;
 
     try {
+        const attachments = await attachmentsFromInput(form.elements.files);
+
+        if (!form.elements.comment.value.trim() && attachments.length === 0) {
+            throw new Error('Add a comment or choose at least one file.');
+        }
+
         await apiRequest('task.comment', {
             id: Number(form.elements.id.value),
-            comment: form.elements.comment.value
+            comment: form.elements.comment.value,
+            attachments
         });
-        showMessage('Comment added.');
+        showMessage(attachments.length ? 'Comment/files added.' : 'Comment added.');
         await loadTasks();
         const issue = state.taskIssues.find((item) => Number(item.id) === Number(form.elements.id.value));
         showTaskDetails(issue, true);

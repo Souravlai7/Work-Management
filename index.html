@@ -645,9 +645,12 @@
             <form class="details-form" id="task-comment-form" hidden>
                 <input name="id" type="hidden">
                 <label for="task-comment">Comment</label>
-                <textarea id="task-comment" name="comment" rows="3" required></textarea>
+                <textarea id="task-comment" name="comment" rows="3"></textarea>
+                <label for="task-comment-files">Files</label>
+                <input id="task-comment-files" name="files" type="file" multiple>
+                <small class="form-help">Upload up to 5 files, 5 MB each. A comment or file is required.</small>
                 <div class="form-actions">
-                    <button id="add-comment-button" type="submit" data-permission="task.comment">Add comment</button>
+                    <button id="add-comment-button" type="submit" data-permission="task.comment">Add comment / files</button>
                 </div>
             </form>
 

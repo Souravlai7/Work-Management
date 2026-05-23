@@ -996,6 +996,38 @@ button.danger:hover {
     background: #ffffff;
 }
 
+.attachment-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.attachment-link {
+    align-items: center;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--primary);
+    display: inline-flex;
+    font-size: 0.86rem;
+    font-weight: 700;
+    max-width: 100%;
+    padding: 7px 10px;
+    text-decoration: none;
+}
+
+.attachment-link span {
+    color: var(--muted);
+    margin-left: 6px;
+}
+
+.form-help {
+    color: var(--muted);
+    display: block;
+    margin-top: -2px;
+}
+
 .work-item {
     background: #f8fafc;
 }
