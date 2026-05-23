@@ -401,18 +401,26 @@ async function apiRequest(action, payload = {}) {
         headers['X-Signature'] = signature;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: requestBody
-    });
-    const data = await response.json().catch(() => ({ ok: false, message: 'Invalid API response.' }));
-
-    if (!response.ok || !data.ok) {
-        throw new Error(data.message || `Request failed with HTTP ${response.status}`);
+    try {
+        const response = await axios.post(
+            `${API_URL}${endpoint}`,
+            requestBody,
+            { headers }
+        );
+        const data = response.data;
+        if (!data.ok) {
+            throw new Error(data.message || 'Request failed.');
+        }
+        return data;
+    } catch (error) {
+        // Axios HTTP error
+        if (error.response) {
+            const data = error.response.data || {};
+            throw new Error(data.message || `Request failed with HTTP ${error.response.status}`);
+        }
+        // Network / parsing error
+        throw new Error(error.message || 'Invalid API response.');
     }
-
-    return data;
 }
 
 function setSession(data) {
