@@ -953,9 +953,8 @@ function syncCompletedDateState() {
 
     if (!isDone) {
         form.elements.completed_date.value = '';
-    } else{
-        const today = todayDate();
-        form.elements.completed_date.value = today;
+    } else if (isDone && !form.elements.completed_date.value) {
+        form.elements.completed_date.value = todayDate();
     }
 }
 
