@@ -152,6 +152,46 @@ function readFileAsAttachment(file) {
     });
 }
 
+async function compressImage(file, quality = 0.7) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const reader = new FileReader();
+
+        reader.onload = e => {
+            img.src = e.target.result;
+        };
+
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            ctx.drawImage(img, 0, 0);
+
+            canvas.toBlob(
+                blob => resolve(blob),
+                'image/jpeg',
+                quality
+            );
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+async function prepareAttachment(file) {
+    let processedFile = file;
+
+    // Compress only images
+    if (file.type.startsWith('image/')) {
+        processedFile = await compressImage(file, 0.7);
+    }
+
+    // Convert to attachment object
+    return await readFileAsAttachment(processedFile);
+}
+
 async function attachmentsFromInput(input) {
     const files = Array.from(input.files || []);
 
@@ -165,7 +205,7 @@ async function attachmentsFromInput(input) {
         }
     });
 
-    return Promise.all(files.map(readFileAsAttachment));
+    return Promise.all(files.map(prepareAttachment));
 }
 
 function formatDateTime(value) {
