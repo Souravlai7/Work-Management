@@ -1637,4 +1637,20 @@ $('#task-status').addEventListener('change', syncCompletedDateState);
 
 window.addEventListener('hashchange', route);
 
-clearSession();
+async function restoreSession() {
+    if (!state.authToken) {
+        clearSession();
+        return;
+    }
+
+    try {
+        const data = await apiRequest('dashboard.get');
+        setSession(data);
+        await route();
+    } catch (error) {
+        clearSession();
+        showMessage('Please log in again.', 'error');
+    }
+}
+
+restoreSession();
