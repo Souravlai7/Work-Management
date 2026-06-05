@@ -262,6 +262,22 @@ body.login-page #error {
     color: var(--danger);
 }
 
+.stat.paused::before {
+    background: #f59e0b;
+}
+
+.stat.paused strong {
+    color: #b45309;
+}
+
+.stat.unsolved::before {
+    background: #8b5cf6;
+}
+
+.stat.unsolved strong {
+    color: #5b21b6;
+}
+
 .section-header {
     align-items: flex-start;
     display: flex;
@@ -1695,15 +1711,26 @@ textarea:hover:not(:focus) {
     font-size: 12px;
 }
 
-.my-tasks-more {
-    color: var(--muted);
-    font-size: 13px;
-    margin: 8px 0 0;
-    padding: 6px 10px;
-    background: #f8fafc;
+.my-task-hidden {
+    display: none;
+}
+
+.my-tasks-show-more {
+    background: none;
     border: 1px dashed var(--line);
     border-radius: 8px;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 13px;
+    margin: 4px 0 0;
+    padding: 8px 14px;
+    text-align: center;
     width: 100%;
+}
+
+.my-tasks-show-more:hover {
+    background: #f0f4ff;
+    border-color: var(--primary);
 }
 
 /* ── Overdue Tasks ───────────────────────────────────────────── */

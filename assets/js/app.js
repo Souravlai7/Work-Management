@@ -633,6 +633,8 @@ async function loadDashboard() {
     $('#stat-completed-summary').textContent = `${data.stats.completed_today_tasks} completed today`;
     $('#stat-blocked-tasks').textContent = data.stats.blocked_tasks;
     $('#stat-critical-summary').textContent = `${data.stats.critical_tasks} critical`;
+    $('#stat-paused-tasks').textContent = data.stats.paused_tasks;
+    $('#stat-unsolved-tasks').textContent = data.stats.unsolved_tasks;
     $('#stat-assigned-tasks').textContent = data.stats.assigned_tasks;
     $('#stat-assigned-summary').textContent = `${data.stats.unassigned_tasks} unassigned`;
     $('#stat-no-developer-tasks').textContent = data.stats.tasks_without_developer;
@@ -953,11 +955,11 @@ async function loadMyTasks() {
         .filter(({ key }) => grouped[key]?.length)
         .map(({ key, label }) => {
             const all = grouped[key];
-            const visible = all.slice(0, MY_TASKS_LIMIT);
-            const hidden = all.length - visible.length;
-            const cards = visible.map((task) => {
+            const hiddenCount = Math.max(0, all.length - MY_TASKS_LIMIT);
+            const cards = all.map((task, idx) => {
                 const hours = issueTotalHours(task);
-                return `<div class="my-task-card" data-view-task="${task.id}">
+                const extraClass = idx >= MY_TASKS_LIMIT ? ' my-task-hidden' : '';
+                return `<div class="my-task-card${extraClass}" data-view-task="${task.id}">
                     <div class="my-task-meta">
                         <span class="key-chip">${escapeHtml(task.task_id)}</span>
                         ${badge(task.priority || 'Normal', priorityType[task.priority] || 'neutral')}
@@ -966,7 +968,7 @@ async function loadMyTasks() {
                     <p class="my-task-title">${escapeHtml(task.title)}</p>
                     <span class="muted-text my-task-project">${escapeHtml(task.project || 'No project')}</span>
                 </div>`;
-            }).join('') + (hidden > 0 ? `<p class="my-tasks-more">+${hidden} more — use Search to find them</p>` : '');
+            }).join('') + (hiddenCount > 0 ? `<button class="my-tasks-show-more" type="button">Show more (+${hiddenCount})</button>` : '');
 
             const cssKey = key.toLowerCase().replace(/\s+/g, '_');
             return `<div class="my-tasks-group">
@@ -1789,6 +1791,14 @@ $('#refresh-overdue-tasks').addEventListener('click', async (event) => {
 });
 
 $('#my-tasks-content').addEventListener('click', (event) => {
+    const showMore = event.target.closest('.my-tasks-show-more');
+    if (showMore) {
+        const group = showMore.closest('.my-tasks-group');
+        group.querySelectorAll('.my-task-hidden').forEach((el) => el.classList.remove('my-task-hidden'));
+        showMore.remove();
+        return;
+    }
+
     const card = event.target.closest('[data-view-task]');
     if (!card) return;
     const issue = state.taskIssues.find((t) => t.id === Number(card.dataset.viewTask));
