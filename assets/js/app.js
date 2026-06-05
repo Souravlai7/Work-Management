@@ -1114,7 +1114,7 @@ async function loadTaskAssignments() {
             <td>${badge(row.status || 'Todo', String(row.status || 'neutral').toLowerCase().replaceAll(' ', '-'))}</td>
             <td>${badge(row.priority || 'Medium', 'neutral')}</td>
         </tr>`;
-    }).join('') || '<tr><td colspan="8">No working tasks found for this date.</td></tr>';
+    }).join('') || '<tr><td colspan="8" style="text-align:center;padding:2rem;color:#888;">No work logged in this date range.</td></tr>';
 }
 
 async function loadTasks() {
