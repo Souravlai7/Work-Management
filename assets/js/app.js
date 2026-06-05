@@ -94,6 +94,19 @@ function showMessage(message, type = 'flash') {
     box.hidden = false;
 }
 
+function setLoading(button, loading) {
+    if (!button) return;
+    if (loading) {
+        button.disabled = true;
+        button.dataset.originalText = button.textContent.trim();
+        button.innerHTML = '<span class="btn-spinner"></span>' + escapeHtml(button.dataset.originalText);
+    } else {
+        button.disabled = false;
+        button.textContent = button.dataset.originalText || button.textContent;
+        delete button.dataset.originalText;
+    }
+}
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -1336,6 +1349,8 @@ async function route() {
 $('#login-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     showMessage('');
+    const button = event.currentTarget.querySelector('[type="submit"]');
+    setLoading(button, true);
 
     try {
         const data = await apiRequest('login', {
@@ -1347,13 +1362,20 @@ $('#login-form').addEventListener('submit', async (event) => {
         await route();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
-$('#logout-button').addEventListener('click', async () => {
+$('#logout-button').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    setLoading(button, true);
+
     try {
         await apiRequest('logout');
     } catch (error) {
+    } finally {
+        setLoading(button, false);
     }
 
     clearSession();
@@ -1365,33 +1387,50 @@ bindPagination('#developers-pagination', 'developers', loadDevelopers);
 bindPagination('#roles-pagination', 'roles', loadRoles);
 bindPagination('#projects-pagination', 'projects', loadTasks);
 
-$('#refresh-worklog-report').addEventListener('click', async () => {
+$('#refresh-worklog-report').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    setLoading(button, true);
+
     try {
         await loadWorklogs();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
-$('#refresh-dev-worklogs-report').addEventListener('click', async () => {
+$('#refresh-dev-worklogs-report').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    setLoading(button, true);
+
     try {
         await loadDeveloperWorkLogs();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
-$('#refresh-task-assignments-report').addEventListener('click', async () => {
+$('#refresh-task-assignments-report').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    setLoading(button, true);
+
     try {
         await loadTaskAssignments();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
 $('#user-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const button = $('#save-user-button');
+    setLoading(button, true);
 
     try {
         await apiRequest('users.save', {
@@ -1409,6 +1448,8 @@ $('#user-form').addEventListener('submit', async (event) => {
         await loadUsers();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
@@ -1433,12 +1474,16 @@ $('#users-table').addEventListener('click', async (event) => {
     }
 
     if (deleteId && confirm('Delete this user?')) {
+        const button = event.target;
+        setLoading(button, true);
+
         try {
             await apiRequest('users.delete', { id: Number(deleteId) });
             showMessage('User deleted.');
             await loadUsers();
         } catch (error) {
             showMessage(error.message, 'error');
+            setLoading(button, false);
         }
     }
 });
@@ -1451,6 +1496,8 @@ $('#role-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const permissions = Array.from(form.querySelectorAll('input[name="permissions"]:checked')).map((input) => input.value);
+    const button = $('#save-role-button');
+    setLoading(button, true);
 
     try {
         await apiRequest('roles.save', {
@@ -1464,6 +1511,8 @@ $('#role-form').addEventListener('submit', async (event) => {
         await loadRoles();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
@@ -1494,6 +1543,8 @@ $('#cancel-role-edit').addEventListener('click', () => {
 $('#developer-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const button = $('#save-developer-button');
+    setLoading(button, true);
 
     try {
         await apiRequest('developers.save', {
@@ -1507,6 +1558,8 @@ $('#developer-form').addEventListener('submit', async (event) => {
         await loadDevelopers();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
@@ -1527,12 +1580,16 @@ $('#developers-table').addEventListener('click', async (event) => {
     }
 
     if (deleteId && confirm('Delete this developer?')) {
+        const button = event.target;
+        setLoading(button, true);
+
         try {
             await apiRequest('developers.delete', { id: Number(deleteId) });
             showMessage('Developer deleted.');
             await loadDevelopers();
         } catch (error) {
             showMessage(error.message, 'error');
+            setLoading(button, false);
         }
     }
 });
@@ -1559,6 +1616,8 @@ $('#new-developer-button').addEventListener('click', () => {
 $('#project-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const button = $('#save-project-button');
+    setLoading(button, true);
 
     try {
         await apiRequest('projects.save', {
@@ -1575,12 +1634,16 @@ $('#project-form').addEventListener('submit', async (event) => {
         await loadTasks();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
 $('#task-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const button = $('#save-task-button');
+    setLoading(button, true);
 
     try {
         await apiRequest('task.save', {
@@ -1601,6 +1664,8 @@ $('#task-form').addEventListener('submit', async (event) => {
         await loadTasks();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
@@ -1608,8 +1673,10 @@ $('#task-search-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const result = $('#task-search-result');
+    const button = $('#task-search-button');
     result.className = 'search-result-text';
     result.textContent = 'Checking task...';
+    setLoading(button, true);
 
     try {
         const data = await apiRequest('task.find', {
@@ -1629,6 +1696,8 @@ $('#task-search-form').addEventListener('submit', async (event) => {
     } catch (error) {
         result.classList.add('error-text');
         result.textContent = error.message;
+    } finally {
+        setLoading(button, false);
     }
 });
 
@@ -1656,12 +1725,16 @@ $('#project-board').addEventListener('click', async (event) => {
     }
 
     if (deleteProjectId && confirm('Delete this project?')) {
+        const button = event.target;
+        setLoading(button, true);
+
         try {
             await apiRequest('projects.delete', { id: Number(deleteProjectId) });
             showMessage('Project deleted.');
             await loadTasks();
         } catch (error) {
             showMessage(error.message, 'error');
+            setLoading(button, false);
         }
     }
 
@@ -1676,12 +1749,16 @@ $('#project-board').addEventListener('click', async (event) => {
     }
 
     if (deleteId && confirm('Delete this task?')) {
+        const button = event.target;
+        setLoading(button, true);
+
         try {
             await apiRequest('task.delete', { id: Number(deleteId) });
             showMessage('Task deleted.');
             await loadTasks();
         } catch (error) {
             showMessage(error.message, 'error');
+            setLoading(button, false);
         }
     }
 });
@@ -1700,6 +1777,8 @@ $('#activity-tabs').addEventListener('click', (event) => {
 $('#task-time-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const button = $('#add-time-button');
+    setLoading(button, true);
 
     try {
         await apiRequest('task.time_log', {
@@ -1716,12 +1795,16 @@ $('#task-time-form').addEventListener('submit', async (event) => {
         showTaskDetails(issue, true);
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
 $('#task-comment-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const button = $('#add-comment-button');
+    setLoading(button, true);
 
     try {
         const attachments = await attachmentsFromInput(form.elements.files);
@@ -1741,6 +1824,8 @@ $('#task-comment-form').addEventListener('submit', async (event) => {
         showTaskDetails(issue, true);
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
@@ -1756,6 +1841,8 @@ $('#import-tasks-button').addEventListener('click', () => {
 $('#task-import-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const button = $('#import-tasks-submit-button');
+    setLoading(button, true);
 
     try {
         const data = await apiRequest('task.bulk_import', {
@@ -1766,6 +1853,8 @@ $('#task-import-form').addEventListener('submit', async (event) => {
         await loadTasks();
     } catch (error) {
         showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
     }
 });
 
