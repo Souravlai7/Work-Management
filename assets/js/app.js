@@ -1908,6 +1908,18 @@ document.querySelectorAll('[data-close-modal]').forEach((button) => {
     button.addEventListener('click', () => closeModal(button.dataset.closeModal));
 });
 
+document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+    backdrop.addEventListener('click', (event) => {
+        if (event.target !== backdrop) return;
+        const modal = backdrop.querySelector('.modal');
+        if (!modal) return;
+        modal.classList.remove('modal-attention');
+        void modal.offsetWidth;
+        modal.classList.add('modal-attention');
+        modal.addEventListener('animationend', () => modal.classList.remove('modal-attention'), { once: true });
+    });
+});
+
 $('#task-details-edit-button').addEventListener('click', () => {
     closeModal('task-details-modal');
     openTaskModal(state.currentIssue);

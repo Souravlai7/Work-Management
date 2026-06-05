@@ -1113,6 +1113,17 @@ button.danger:hover {
     width: 100%;
 }
 
+@keyframes modal-attention {
+    0%   { transform: scale(1);     box-shadow: var(--shadow); }
+    30%  { transform: scale(1.028); box-shadow: 0 22px 56px rgba(9, 30, 66, 0.26); }
+    65%  { transform: scale(1.014); }
+    100% { transform: scale(1);     box-shadow: var(--shadow); }
+}
+
+.modal-attention {
+    animation: modal-attention 0.32s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
 .large-modal {
     max-width: 980px;
 }
