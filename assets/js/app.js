@@ -856,14 +856,12 @@ async function loadTasks() {
     state.projects = data.projects || [];
     state.pagination.projects.page = data.pagination.page;
 
+    const columnHasMore = data.column_has_more || {};
     state.taskColumnPages = {};
     state.projects.forEach((project) => {
         TASK_STATUSES.forEach((status) => {
             const key = taskBatchKey(project.id, status);
-            const count = state.taskIssues.filter(
-                (i) => Number(i.project_id) === Number(project.id) && i.status === status
-            ).length;
-            state.taskColumnPages[key] = { page: 1, hasMore: count >= TASK_BATCH_SIZE, loading: false };
+            state.taskColumnPages[key] = { page: 1, hasMore: columnHasMore[key] === true, loading: false };
         });
     });
 
