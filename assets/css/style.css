@@ -862,6 +862,14 @@ button.danger:hover {
     background: #e9f2ff;
 }
 
+.loading-tasks {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    pointer-events: none;
+    text-align: center;
+}
+
 .lazy-task-sentinel {
     color: var(--muted);
     font-size: 12px;

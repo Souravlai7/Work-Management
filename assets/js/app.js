@@ -40,7 +40,7 @@ const state = {
     availablePermissions: {},
     currentIssue: null,
     activityTab: 'all',
-    taskVisible: {},
+    taskColumnPages: {},
     pagination: {
         users: { page: 1, perPage: 20 },
         developers: { page: 1, perPage: 20 },
@@ -329,19 +329,42 @@ function taskBatchKey(projectId, status) {
     return `${projectId}:${status}`;
 }
 
-function visibleTaskLimit(projectId, status) {
+async function loadMoreTasks(projectId, status) {
     const key = taskBatchKey(projectId, status);
+    const col = state.taskColumnPages[key];
 
-    if (!state.taskVisible[key]) {
-        state.taskVisible[key] = TASK_BATCH_SIZE;
+    if (!col || col.loading || !col.hasMore) {
+        return;
     }
 
-    return state.taskVisible[key];
-}
+    col.loading = true;
+    renderProjectBoard();
 
-function loadMoreTasks(projectId, status) {
-    const key = taskBatchKey(projectId, status);
-    state.taskVisible[key] = visibleTaskLimit(projectId, status) + TASK_BATCH_SIZE;
+    try {
+        const nextPage = col.page + 1;
+        const data = await apiRequest('task.list', {
+            project_id: projectId,
+            status,
+            page: nextPage,
+            per_page: TASK_BATCH_SIZE
+        });
+
+        const newIssues = data.issues || [];
+        const existingIds = new Set(state.taskIssues.map((i) => i.id));
+        state.taskIssues = [
+            ...state.taskIssues,
+            ...newIssues.filter((i) => !existingIds.has(i.id))
+        ];
+        state.taskColumnPages[key] = {
+            page: nextPage,
+            hasMore: newIssues.length >= TASK_BATCH_SIZE,
+            loading: false
+        };
+    } catch (error) {
+        state.taskColumnPages[key] = { ...col, loading: false };
+        showMessage(error.message, 'error');
+    }
+
     renderProjectBoard();
 }
 
@@ -832,6 +855,18 @@ async function loadTasks() {
     state.developers = data.developers || state.developers;
     state.projects = data.projects || [];
     state.pagination.projects.page = data.pagination.page;
+
+    state.taskColumnPages = {};
+    state.projects.forEach((project) => {
+        TASK_STATUSES.forEach((status) => {
+            const key = taskBatchKey(project.id, status);
+            const count = state.taskIssues.filter(
+                (i) => Number(i.project_id) === Number(project.id) && i.status === status
+            ).length;
+            state.taskColumnPages[key] = { page: 1, hasMore: count >= TASK_BATCH_SIZE, loading: false };
+        });
+    });
+
     renderProjectOptions();
     renderProjectMembers();
     renderProjectBoard();
@@ -866,21 +901,24 @@ function renderProjectBoard() {
 
 function renderTaskColumn(project, tasks, status) {
     const statusTasks = tasks.filter((issue) => issue.status === status);
-    const limit = visibleTaskLimit(project.id, status);
-    const visibleTasks = statusTasks.slice(0, limit);
-    const remaining = Math.max(0, statusTasks.length - visibleTasks.length);
-    const cards = visibleTasks.map(renderTaskCard).join('');
-    const loadMore = remaining > 0
-        ? `<button class="load-more-tasks" data-load-more-tasks="1" data-project-id="${project.id}" data-status="${escapeHtml(status)}" type="button">Load ${Math.min(TASK_BATCH_SIZE, remaining)} more</button>
-            <div class="lazy-task-sentinel" data-project-id="${project.id}" data-status="${escapeHtml(status)}"></div>`
-        : '';
+    const key = taskBatchKey(project.id, status);
+    const col = state.taskColumnPages[key] || { hasMore: false, loading: false };
+    const cards = statusTasks.map(renderTaskCard).join('');
+
+    let footer = '';
+    if (col.loading) {
+        footer = '<p class="load-more-tasks loading-tasks">Loading…</p>';
+    } else if (col.hasMore) {
+        footer = `<button class="load-more-tasks" data-load-more-tasks="1" data-project-id="${project.id}" data-status="${escapeHtml(status)}" type="button">Load more</button>
+            <div class="lazy-task-sentinel" data-project-id="${project.id}" data-status="${escapeHtml(status)}"></div>`;
+    }
 
     return `<section class="task-column">
         <div class="column-title">
             <span>${escapeHtml(status)}</span>
-            <strong>${statusTasks.length}</strong>
+            <strong>${statusTasks.length}${col.hasMore ? '+' : ''}</strong>
         </div>
-        <div class="task-list">${cards || '<p class="empty-state">No tasks</p>'}${loadMore}</div>
+        <div class="task-list">${cards || '<p class="empty-state">No tasks</p>'}${footer}</div>
     </section>`;
 }
 
