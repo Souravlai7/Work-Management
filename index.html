@@ -269,7 +269,15 @@
                 </div>
                 <div class="table-card report-table-card">
                     <table class="worklog-report-table">
-                        <thead id="worklogs-head"></thead>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Task</th>
+                                <th>Project</th>
+                                <th class="hours-column">Hours</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
                         <tbody id="worklogs-table"></tbody>
                     </table>
                 </div>
@@ -279,7 +287,7 @@
                 <div class="section-header">
                     <div class="page-title">
                         <h1>Developer Worklogs</h1>
-                        <p>Developer-wise logged hours by user, project, and day.</p>
+                        <p>Developer-wise logged hours by task, user, and project.</p>
                     </div>
                     <button id="refresh-dev-worklogs-report" type="button" data-permission="developers.work_logs.view">View Report</button>
                 </div>
@@ -299,7 +307,16 @@
                 </div>
                 <div class="table-card report-table-card">
                     <table class="worklog-report-table">
-                        <thead id="dev-worklogs-head"></thead>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Task</th>
+                                <th>User</th>
+                                <th>Project</th>
+                                <th class="hours-column">Hours</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
                         <tbody id="dev-work-logs-table"></tbody>
                     </table>
                 </div>

@@ -710,46 +710,63 @@ async function loadWorklogs() {
         $('#worklog-date-to').value = todayDate();
     }
 
+    $('#worklogs-table').innerHTML = '<tr class="loading-row"><td colspan="5">Loading…</td></tr>';
+
     const data = await apiRequest('developers.worklogs', {
         user_id: Number($('#worklog-user-filter').value || 0),
         date_from: $('#worklog-date-from').value,
         date_to: $('#worklog-date-to').value
     });
 
+    const currentUserId = Number($('#worklog-user-filter').value || 0);
     $('#worklog-user-filter').innerHTML = [
         '<option value="0">All users</option>',
-        ...data.users.map((user) => `<option value="${user.id}" ${Number($('#worklog-user-filter').value || 0) === Number(user.id) ? 'selected' : ''}>${escapeHtml(user.name)}</option>`)
+        ...data.users.map((user) => `<option value="${user.id}" ${currentUserId === Number(user.id) ? 'selected' : ''}>${escapeHtml(user.name)}</option>`)
     ].join('');
 
-    $('#worklogs-head').innerHTML = `<tr>
-        <th>User</th>
-        <th>Project</th>
-        <th class="total-column">Total</th>
-        ${data.dates.map((date) => `<th>${escapeHtml(formatWorklogDate(date))}</th>`).join('')}
-    </tr>`;
-
-    $('#worklogs-table').innerHTML = data.rows.map((row) => `<tr>
-        <td>${escapeHtml(row.user_name)}</td>
-        <td>${escapeHtml(row.project || 'No project')}</td>
-        <td class="total-column">${Number(row.total_hours || 0).toFixed(2)}h</td>
-        ${data.dates.map((date) => `<td>${Number(row.daily_hours[date] || 0) > 0 ? `${Number(row.daily_hours[date]).toFixed(2)}h` : '-'}</td>`).join('')}
-    </tr>`).join('') || `<tr><td colspan="${data.dates.length + 3}">No work logs found.</td></tr>`;
-
-    $('#worklogs-table').innerHTML += `<tr class="final-total-row">
-        <td colspan="2">Final total hours</td>
-        <td class="total-column">${Number(data.total_hours || 0).toFixed(2)}h</td>
-        <td colspan="${data.dates.length}"></td>
-    </tr>`;
+    $('#worklogs-table').innerHTML = renderWorklogRows(data.logs, data.total_hours);
 }
 
-function formatWorklogDate(value) {
-    const date = new Date(`${value}T00:00:00`);
+function renderWorklogRows(logs, finalTotalHours) {
+    if (!logs || !logs.length) {
+        return '<tr><td colspan="5">No work logs found for this period.</td></tr>';
+    }
 
-    return date.toLocaleDateString(undefined, {
-        weekday: 'short',
-        month: 'short',
-        day: '2-digit'
+    const userGroups = new Map();
+
+    logs.forEach((log) => {
+        const key = `${log.user_id || 0}:${log.user_name || 'Unknown'}`;
+
+        if (!userGroups.has(key)) {
+            userGroups.set(key, { name: log.user_name || 'Unknown', hours: 0, logs: [] });
+        }
+
+        const group = userGroups.get(key);
+        group.hours += Number(log.hours || 0);
+        group.logs.push(log);
     });
+
+    const html = [];
+
+    userGroups.forEach((group) => {
+        html.push(`<tr class="group-row user-group"><td colspan="5">User: ${escapeHtml(group.name)}</td></tr>`);
+
+        group.logs.forEach((log) => {
+            html.push(`<tr>
+                <td class="date-cell">${escapeHtml(formatDate(log.work_date))}</td>
+                <td><span class="key-chip">${escapeHtml(log.task_id)}</span> ${escapeHtml(log.task_title)}</td>
+                <td>${escapeHtml(log.project || 'No project')}</td>
+                <td class="hours-column">${Number(log.hours || 0).toFixed(2)}h</td>
+                <td class="note-cell" title="${escapeHtml(log.note || '')}">${escapeHtml(log.note || '—')}</td>
+            </tr>`);
+        });
+
+        html.push(`<tr class="total-row"><td colspan="3">Total for ${escapeHtml(group.name)}</td><td class="hours-column">${group.hours.toFixed(2)}h</td><td></td></tr>`);
+    });
+
+    html.push(`<tr class="final-total-row"><td colspan="3">Total hours</td><td class="hours-column">${Number(finalTotalHours || 0).toFixed(2)}h</td><td></td></tr>`);
+
+    return html.join('');
 }
 
 async function loadDeveloperWorkLogs() {
@@ -761,71 +778,67 @@ async function loadDeveloperWorkLogs() {
         $('#dev-worklogs-date-to').value = todayDate();
     }
 
+    $('#dev-work-logs-table').innerHTML = '<tr class="loading-row"><td colspan="6">Loading…</td></tr>';
+
     const data = await apiRequest('developers.work_logs', {
         developer_id: Number($('#dev-worklogs-developer-filter').value || 0),
         date_from: $('#dev-worklogs-date-from').value,
         date_to: $('#dev-worklogs-date-to').value
     });
 
+    const currentDevId = Number($('#dev-worklogs-developer-filter').value || 0);
     $('#dev-worklogs-developer-filter').innerHTML = [
         '<option value="0">All developers</option>',
-        ...data.developers.map((developer) => `<option value="${developer.id}" ${Number($('#dev-worklogs-developer-filter').value || 0) === Number(developer.id) ? 'selected' : ''}>${escapeHtml(developer.name)}</option>`)
+        ...data.developers.map((developer) => `<option value="${developer.id}" ${currentDevId === Number(developer.id) ? 'selected' : ''}>${escapeHtml(developer.name)}</option>`)
     ].join('');
 
-    $('#dev-worklogs-head').innerHTML = `<tr>
-        <th>Developer</th>
-        <th>User</th>
-        <th>Project</th>
-        <th class="total-column">Total</th>
-        ${data.dates.map((date) => `<th>${escapeHtml(formatWorklogDate(date))}</th>`).join('')}
-    </tr>`;
-
-    $('#dev-work-logs-table').innerHTML = renderDeveloperWorklogReportRows(data.rows, data.dates, data.total_hours);
+    $('#dev-work-logs-table').innerHTML = renderDeveloperWorklogReportRows(data.logs, data.total_hours);
 }
 
-function renderDeveloperWorklogReportRows(rows, dates, finalTotalHours) {
-    if (!rows.length) {
-        return `<tr><td colspan="${dates.length + 4}">No developer work logs found.</td></tr>`;
+function renderDeveloperWorklogReportRows(logs, finalTotalHours) {
+    if (!logs || !logs.length) {
+        return '<tr><td colspan="6">No developer work logs found for this period.</td></tr>';
     }
 
     const developerGroups = new Map();
 
-    rows.forEach((row) => {
-        const developerKey = `${row.developer_id || 0}:${row.developer_name || 'Unassigned developer'}`;
+    logs.forEach((log) => {
+        const key = `${log.developer_id || 0}:${log.developer_name || 'Unassigned'}`;
 
-        if (!developerGroups.has(developerKey)) {
-            developerGroups.set(developerKey, {
-                name: row.developer_name || 'Unassigned developer',
-                git: row.git_username || '',
+        if (!developerGroups.has(key)) {
+            developerGroups.set(key, {
+                name: log.developer_name || 'Unassigned',
+                git: log.git_username || '',
                 hours: 0,
-                rows: []
+                logs: []
             });
         }
 
-        const developer = developerGroups.get(developerKey);
-        developer.hours += Number(row.total_hours || 0);
-        developer.rows.push(row);
+        const developer = developerGroups.get(key);
+        developer.hours += Number(log.hours || 0);
+        developer.logs.push(log);
     });
 
     const html = [];
 
     developerGroups.forEach((developer) => {
-        html.push(`<tr class="group-row developer-group"><td colspan="${dates.length + 4}">Developer: ${escapeHtml(developer.name)} ${developer.git ? `<span class="muted-text">(${escapeHtml(developer.git)})</span>` : ''}</td></tr>`);
+        html.push(`<tr class="group-row developer-group"><td colspan="6">Developer: ${escapeHtml(developer.name)}${developer.git ? ` <span class="muted-text">(${escapeHtml(developer.git)})</span>` : ''}</td></tr>`);
 
-        developer.rows.forEach((row) => {
+        developer.logs.forEach((log) => {
             html.push(`<tr>
-                <td>${escapeHtml(row.developer_name || 'Unassigned developer')}</td>
-                <td>${escapeHtml(row.user_name || 'Unknown user')}</td>
-                <td>${escapeHtml(row.project || 'No project')}</td>
-                <td class="total-column">${Number(row.total_hours || 0).toFixed(2)}h</td>
-                ${dates.map((date) => `<td>${Number(row.daily_hours[date] || 0) > 0 ? `${Number(row.daily_hours[date]).toFixed(2)}h` : '-'}</td>`).join('')}
+                <td class="date-cell">${escapeHtml(formatDate(log.work_date))}</td>
+                <td><span class="key-chip">${escapeHtml(log.task_id)}</span> ${escapeHtml(log.task_title)}</td>
+                <td>${escapeHtml(log.user_name || 'Unknown')}</td>
+                <td>${escapeHtml(log.project || 'No project')}</td>
+                <td class="hours-column">${Number(log.hours || 0).toFixed(2)}h</td>
+                <td class="note-cell" title="${escapeHtml(log.note || '')}">${escapeHtml(log.note || '—')}</td>
             </tr>`);
         });
 
-        html.push(`<tr class="total-row"><td colspan="3">Total for ${escapeHtml(developer.name)}</td><td class="total-column">${developer.hours.toFixed(2)}h</td><td colspan="${dates.length}"></td></tr>`);
+        html.push(`<tr class="total-row"><td colspan="4">Total for ${escapeHtml(developer.name)}</td><td class="hours-column">${developer.hours.toFixed(2)}h</td><td></td></tr>`);
     });
 
-    html.push(`<tr class="final-total-row"><td colspan="3">Final total hours</td><td class="total-column">${Number(finalTotalHours || 0).toFixed(2)}h</td><td colspan="${dates.length}"></td></tr>`);
+    html.push(`<tr class="final-total-row"><td colspan="4">Total hours</td><td class="hours-column">${Number(finalTotalHours || 0).toFixed(2)}h</td><td></td></tr>`);
 
     return html.join('');
 }

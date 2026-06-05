@@ -399,26 +399,46 @@ table {
 }
 
 .worklog-report-table {
-    min-width: 980px;
+    min-width: 700px;
 }
 
 .worklog-report-table th,
 .worklog-report-table td {
-    text-align: center;
-    white-space: nowrap;
-}
-
-.worklog-report-table th:first-child,
-.worklog-report-table td:first-child,
-.worklog-report-table th:nth-child(2),
-.worklog-report-table td:nth-child(2) {
     text-align: left;
+    white-space: nowrap;
 }
 
 .total-column {
     background: #f4e6ff;
     color: var(--blue);
     font-weight: 900;
+}
+
+.hours-column {
+    background: #f4e6ff;
+    color: var(--blue);
+    font-weight: 900;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.date-cell {
+    color: #555;
+    white-space: nowrap;
+}
+
+.note-cell {
+    color: #666;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.loading-row td {
+    color: #888;
+    font-style: italic;
+    padding: 2rem;
+    text-align: center;
 }
 
 thead {
@@ -457,9 +477,10 @@ tr:hover td {
 }
 
 .user-group td {
-    background: #ffffff;
-    color: #44546f;
-    padding-left: 28px;
+    background: #f7f8fa;
+    border-top: 2px solid var(--line-strong);
+    color: #0f2147;
+    font-size: 15px;
 }
 
 .group-hours {
