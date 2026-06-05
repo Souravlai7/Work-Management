@@ -16,13 +16,16 @@
         </a>
         <nav class="nav" id="nav" hidden>
             <a href="#dashboard" data-permission="dashboard.view">Dashboard</a>
+            <a href="#my-tasks" data-permission="dashboard.view">My Tasks</a>
             <a href="#users" data-permission="users.view">Users</a>
             <a href="#developers" data-permission="developers.view">Developers</a>
             <a href="#roles" data-permission="roles.view">Roles</a>
             <a href="#projects" data-permission="task.view">Projects</a>
             <a href="#task-assignments" data-permission="task.assignments.view">Task Assignments</a>
+            <a href="#overdue-tasks" data-permission="task.view">Overdue <span id="overdue-nav-badge" class="nav-badge" hidden></span></a>
             <a href="#worklogs" data-permission="developers.worklogs.view">Work Logs</a>
             <a href="#dev-work-logs" data-permission="developers.work_logs.view">Dev Work Logs</a>
+            <button class="link-button nav-search-btn" id="search-trigger" type="button" title="Search tasks [/]">Search</button>
             <span id="current-user"></span>
             <button class="link-button" id="logout-button" type="button">Logout</button>
         </nav>
@@ -251,7 +254,10 @@
                         <h1>Worklogs</h1>
                         <p>User-wise logged hours by project and day.</p>
                     </div>
-                    <button id="refresh-worklog-report" type="button" data-permission="developers.worklogs.view">View Report</button>
+                    <div class="section-header-actions">
+                        <button id="export-worklogs-csv" class="secondary" type="button" data-permission="developers.worklogs.view">Export CSV</button>
+                        <button id="refresh-worklog-report" type="button" data-permission="developers.worklogs.view">View Report</button>
+                    </div>
                 </div>
                 <div class="report-toolbar">
                     <label>
@@ -289,7 +295,10 @@
                         <h1>Developer Worklogs</h1>
                         <p>Developer-wise logged hours by task, user, and project.</p>
                     </div>
-                    <button id="refresh-dev-worklogs-report" type="button" data-permission="developers.work_logs.view">View Report</button>
+                    <div class="section-header-actions">
+                        <button id="export-dev-worklogs-csv" class="secondary" type="button" data-permission="developers.work_logs.view">Export CSV</button>
+                        <button id="refresh-dev-worklogs-report" type="button" data-permission="developers.work_logs.view">View Report</button>
+                    </div>
                 </div>
                 <div class="report-toolbar">
                     <label>
@@ -318,6 +327,45 @@
                             </tr>
                         </thead>
                         <tbody id="dev-work-logs-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="panel view" id="my-tasks-view" hidden>
+                <div class="section-header">
+                    <div class="page-title">
+                        <h1>My Tasks</h1>
+                        <p>Tasks currently assigned to you, grouped by status.</p>
+                    </div>
+                    <button id="refresh-my-tasks" type="button" data-permission="dashboard.view">Refresh</button>
+                </div>
+                <div id="my-tasks-content"></div>
+            </section>
+
+            <section class="panel view" id="overdue-tasks-view" hidden>
+                <div class="section-header">
+                    <div class="page-title">
+                        <h1>Overdue Tasks</h1>
+                        <p id="overdue-tasks-subtitle">Tasks whose start date has passed and are not yet complete.</p>
+                    </div>
+                    <button id="refresh-overdue-tasks" type="button" data-permission="task.view">Refresh</button>
+                </div>
+                <div class="table-card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Title</th>
+                                <th>Project</th>
+                                <th>Assignee</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Start Date</th>
+                                <th>Days Overdue</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overdue-tasks-table"></tbody>
                     </table>
                 </div>
             </section>
@@ -711,6 +759,20 @@
     </div>
 
     <div id="toast-container" aria-live="polite"></div>
+
+    <div class="modal-backdrop" id="search-modal" hidden>
+        <section class="modal search-modal" role="dialog" aria-label="Search tasks">
+            <div class="modal-header">
+                <h2 class="modal-title">Search Tasks</h2>
+                <button class="modal-close" id="close-search-modal" type="button" aria-label="Close">&#x2715;</button>
+            </div>
+            <div class="modal-body search-modal-body">
+                <input id="search-input" class="search-input" type="search" placeholder="Search by task ID, title, project, assignee…" autocomplete="off">
+                <div id="search-results" class="search-results"></div>
+            </div>
+        </section>
+    </div>
+
     <script src="assets/js/crypto-js.js"></script>
     <script src="https://cdn.webtechdomains.in/assets/js/axios/axios.js"></script>
     <script src="assets/js/app.js"></script>

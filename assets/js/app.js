@@ -16,9 +16,13 @@ const API_ENDPOINTS = {
     'developers.delete': 'developers/delete',
     'developers.worklogs': 'developers/worklogs',
     'developers.work_logs': 'developers/work-logs',
+    'my.tasks': 'my/tasks',
     'task.assignments': 'tasks/assignments',
     'task.list': 'tasks',
     'task.find': 'tasks/find',
+    'task.get': 'tasks/get',
+    'task.search': 'tasks/search',
+    'task.overdue': 'tasks/overdue',
     'task.save': 'tasks/save',
     'task.bulk_import': 'tasks/bulk-import',
     'task.time_log': 'tasks/time-log',
@@ -52,6 +56,9 @@ const state = {
 const TASK_BATCH_SIZE = 20;
 const TASK_STATUSES = ['Todo', 'In Progress', 'Blocked', 'Done'];
 let taskLazyObservers = [];
+let lastWorklogData = null;
+let lastDevWorklogData = null;
+let searchDebounceTimer = null;
 const $ = (selector) => document.querySelector(selector);
 
 function can(permission) {
@@ -615,6 +622,16 @@ async function loadDashboard() {
     $('#stat-developer-summary').textContent = `${data.stats.active_developers} active`;
     $('#stat-task-summary').textContent = `${data.stats.tasks} total tasks`;
     $('#stat-permissions').textContent = `${data.stats.permissions} permissions`;
+
+    if (can('task.view')) {
+        apiRequest('task.overdue').then((od) => {
+            const navBadge = $('#overdue-nav-badge');
+            if (od.total > 0) {
+                navBadge.textContent = od.total;
+                navBadge.hidden = false;
+            }
+        }).catch(() => {});
+    }
 }
 
 async function loadUsers() {
@@ -718,6 +735,8 @@ async function loadWorklogs() {
         date_to: $('#worklog-date-to').value
     });
 
+    lastWorklogData = data;
+
     const currentUserId = Number($('#worklog-user-filter').value || 0);
     $('#worklog-user-filter').innerHTML = [
         '<option value="0">All users</option>',
@@ -786,6 +805,8 @@ async function loadDeveloperWorkLogs() {
         date_to: $('#dev-worklogs-date-to').value
     });
 
+    lastDevWorklogData = data;
+
     const currentDevId = Number($('#dev-worklogs-developer-filter').value || 0);
     $('#dev-worklogs-developer-filter').innerHTML = [
         '<option value="0">All developers</option>',
@@ -841,6 +862,166 @@ function renderDeveloperWorklogReportRows(logs, finalTotalHours) {
     html.push(`<tr class="final-total-row"><td colspan="4">Total hours</td><td class="hours-column">${Number(finalTotalHours || 0).toFixed(2)}h</td><td></td></tr>`);
 
     return html.join('');
+}
+
+function downloadCsv(filename, headers, rows) {
+    const escapeCell = (value) => {
+        const str = String(value ?? '');
+        return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str.replace(/"/g, '""')}"` : str;
+    };
+    const csv = [headers, ...rows].map((row) => row.map(escapeCell).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function loadMyTasks() {
+    $('#my-tasks-content').innerHTML = '<p class="empty-state">Loading your tasks…</p>';
+
+    const data = await apiRequest('my.tasks');
+
+    // Merge users, developers, and tasks into state for the details modal
+    if (Array.isArray(data.users)) state.users = data.users;
+    if (Array.isArray(data.developers)) state.developers = data.developers;
+
+    (data.tasks || []).forEach((task) => {
+        const idx = state.taskIssues.findIndex((t) => t.id === task.id);
+        if (idx === -1) state.taskIssues.push(task);
+        else state.taskIssues[idx] = task;
+    });
+
+    if (!data.tasks || !data.tasks.length) {
+        $('#my-tasks-content').innerHTML = '<p class="empty-state">No tasks are currently assigned to you.</p>';
+        return;
+    }
+
+    const STATUS_GROUPS = [
+        { key: 'open', label: 'Open' },
+        { key: 'in_progress', label: 'In Progress' },
+        { key: 'blocked', label: 'Blocked' },
+        { key: 'todo', label: 'To Do' },
+        { key: 'done', label: 'Done' },
+    ];
+
+    const grouped = {};
+    STATUS_GROUPS.forEach(({ key }) => { grouped[key] = []; });
+    data.tasks.forEach((task) => {
+        if (grouped[task.status] !== undefined) grouped[task.status].push(task);
+        else { grouped._other = grouped._other || []; grouped._other.push(task); }
+    });
+
+    const priorityType = { critical: 'warning', high: 'warning', medium: 'neutral', low: 'neutral' };
+
+    const html = STATUS_GROUPS
+        .filter(({ key }) => grouped[key]?.length)
+        .map(({ key, label }) => {
+            const cards = grouped[key].map((task) => {
+                const hours = issueTotalHours(task);
+                return `<div class="my-task-card" data-view-task="${task.id}">
+                    <div class="my-task-meta">
+                        <span class="key-chip">${escapeHtml(task.task_id)}</span>
+                        ${badge(task.priority || 'normal', priorityType[task.priority] || 'neutral')}
+                        ${hours > 0 ? `<span class="my-task-hours">${hours.toFixed(1)}h</span>` : ''}
+                    </div>
+                    <p class="my-task-title">${escapeHtml(task.title)}</p>
+                    <span class="muted-text my-task-project">${escapeHtml(task.project || 'No project')}</span>
+                </div>`;
+            }).join('');
+
+            return `<div class="my-tasks-group">
+                <h3 class="my-tasks-group-title my-tasks-${escapeHtml(key)}">${escapeHtml(label)} <span class="task-count-badge">${grouped[key].length}</span></h3>
+                <div class="my-tasks-cards">${cards}</div>
+            </div>`;
+        }).join('');
+
+    $('#my-tasks-content').innerHTML = html;
+}
+
+async function loadOverdueTasks() {
+    $('#overdue-tasks-table').innerHTML = '<tr class="loading-row"><td colspan="9">Loading…</td></tr>';
+
+    const data = await apiRequest('task.overdue');
+
+    const navBadge = $('#overdue-nav-badge');
+    if (data.total > 0) {
+        navBadge.textContent = data.total;
+        navBadge.hidden = false;
+        $('#overdue-tasks-subtitle').textContent = `${data.total} task${data.total !== 1 ? 's' : ''} whose start date has passed and are not yet complete.`;
+    } else {
+        navBadge.hidden = true;
+    }
+
+    if (!data.tasks || !data.tasks.length) {
+        $('#overdue-tasks-table').innerHTML = '<tr><td colspan="9">No overdue tasks found.</td></tr>';
+        return;
+    }
+
+    $('#overdue-tasks-table').innerHTML = data.tasks.map((task) => {
+        const urgency = task.days_overdue > 7 ? 'overdue-critical' : task.days_overdue >= 3 ? 'overdue-warning' : 'overdue-mild';
+        const priorityClass = task.priority === 'critical' ? 'warning' : 'neutral';
+        return `<tr class="${urgency}">
+            <td><span class="key-chip">${escapeHtml(task.task_id)}</span></td>
+            <td>${escapeHtml(task.title)}</td>
+            <td>${escapeHtml(task.project || 'No project')}</td>
+            <td>${escapeHtml(task.assignee || 'Unassigned')}</td>
+            <td>${badge(task.priority || 'normal', priorityClass)}</td>
+            <td>${badge(task.status, 'neutral')}</td>
+            <td>${escapeHtml(formatDate(task.start_date))}</td>
+            <td class="overdue-days-cell">${task.days_overdue} day${task.days_overdue !== 1 ? 's' : ''}</td>
+            <td><button class="secondary" data-load-task="${task.id}" type="button">Details</button></td>
+        </tr>`;
+    }).join('');
+}
+
+async function openTaskById(id) {
+    try {
+        const data = await apiRequest('task.get', { id: Number(id) });
+        mergeTaskLookupData(data);
+        showTaskDetails(data.issue);
+        openModal('task-details-modal');
+    } catch (error) {
+        showMessage(error.message, 'error');
+    }
+}
+
+async function performSearch(query) {
+    if (!query || query.length < 2) {
+        $('#search-results').innerHTML = '<p class="search-hint">Type at least 2 characters…</p>';
+        return;
+    }
+
+    $('#search-results').innerHTML = '<p class="search-hint">Searching…</p>';
+
+    try {
+        const data = await apiRequest('task.search', { query });
+
+        if (!data.tasks.length) {
+            $('#search-results').innerHTML = '<p class="search-hint">No tasks found.</p>';
+            return;
+        }
+
+        $('#search-results').innerHTML = data.tasks.map((task) => {
+            const statusType = task.status === 'done' ? 'active' : 'neutral';
+            return `<div class="search-result" data-load-task="${task.id}" role="button" tabindex="0">
+                <div class="search-result-main">
+                    <span class="key-chip">${escapeHtml(task.task_id)}</span>
+                    <span class="search-result-title">${escapeHtml(task.title)}</span>
+                </div>
+                <div class="search-result-meta">
+                    <span class="muted-text">${escapeHtml(task.project || '')}</span>
+                    ${badge(task.status, statusType)}
+                </div>
+            </div>`;
+        }).join('') + `<p class="search-hint">${data.tasks.length} result${data.tasks.length !== 1 ? 's' : ''}</p>`;
+    } catch (error) {
+        $('#search-results').innerHTML = `<p class="search-hint error-text">${escapeHtml(error.message)}</p>`;
+    }
 }
 
 async function loadTaskAssignments() {
@@ -1426,6 +1607,18 @@ async function route() {
             return;
         }
 
+        if (page === 'my-tasks' && can('dashboard.view')) {
+            showView('my-tasks');
+            await loadMyTasks();
+            return;
+        }
+
+        if (page === 'overdue-tasks' && can('task.view')) {
+            showView('overdue-tasks');
+            await loadOverdueTasks();
+            return;
+        }
+
         if (page === 'worklogs' && can('developers.worklogs.view')) {
             showView('worklogs');
             await loadWorklogs();
@@ -1499,6 +1692,17 @@ $('#refresh-worklog-report').addEventListener('click', async (event) => {
     }
 });
 
+$('#export-worklogs-csv').addEventListener('click', () => {
+    if (!lastWorklogData?.logs?.length) {
+        showMessage('Load the report first before exporting.', 'error');
+        return;
+    }
+    downloadCsv('worklogs.csv',
+        ['Date', 'User', 'Task ID', 'Task Title', 'Project', 'Hours', 'Note'],
+        lastWorklogData.logs.map((log) => [log.work_date, log.user_name, log.task_id, log.task_title, log.project, log.hours, log.note])
+    );
+});
+
 $('#refresh-dev-worklogs-report').addEventListener('click', async (event) => {
     const button = event.currentTarget;
     setLoading(button, true);
@@ -1509,6 +1713,98 @@ $('#refresh-dev-worklogs-report').addEventListener('click', async (event) => {
         showMessage(error.message, 'error');
     } finally {
         setLoading(button, false);
+    }
+});
+
+$('#export-dev-worklogs-csv').addEventListener('click', () => {
+    if (!lastDevWorklogData?.logs?.length) {
+        showMessage('Load the report first before exporting.', 'error');
+        return;
+    }
+    downloadCsv('dev-worklogs.csv',
+        ['Date', 'Developer', 'Git Username', 'User', 'Task ID', 'Task Title', 'Project', 'Hours', 'Note'],
+        lastDevWorklogData.logs.map((log) => [log.work_date, log.developer_name, log.git_username, log.user_name, log.task_id, log.task_title, log.project, log.hours, log.note])
+    );
+});
+
+$('#refresh-my-tasks').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    setLoading(button, true);
+
+    try {
+        await loadMyTasks();
+    } catch (error) {
+        showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
+    }
+});
+
+$('#refresh-overdue-tasks').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    setLoading(button, true);
+
+    try {
+        await loadOverdueTasks();
+    } catch (error) {
+        showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
+    }
+});
+
+$('#my-tasks-content').addEventListener('click', (event) => {
+    const card = event.target.closest('[data-view-task]');
+    if (!card) return;
+    const issue = state.taskIssues.find((t) => t.id === Number(card.dataset.viewTask));
+    if (issue) {
+        showTaskDetails(issue);
+        openModal('task-details-modal');
+    }
+});
+
+$('#overdue-tasks-table').addEventListener('click', async (event) => {
+    const btn = event.target.closest('[data-load-task]');
+    if (!btn) return;
+    setLoading(btn, true);
+    await openTaskById(btn.dataset.loadTask);
+    setLoading(btn, false);
+});
+
+$('#search-trigger').addEventListener('click', () => {
+    openModal('search-modal');
+    setTimeout(() => $('#search-input').focus(), 50);
+});
+
+$('#close-search-modal').addEventListener('click', () => closeModal('search-modal'));
+
+$('#search-modal').addEventListener('click', (event) => {
+    if (event.target === $('#search-modal')) {
+        closeModal('search-modal');
+    }
+});
+
+$('#search-input').addEventListener('input', (event) => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => performSearch(event.target.value.trim()), 300);
+});
+
+$('#search-results').addEventListener('click', async (event) => {
+    const result = event.target.closest('[data-load-task]');
+    if (!result) return;
+    closeModal('search-modal');
+    await openTaskById(result.dataset.loadTask);
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === '/' && !event.target.matches('input, textarea, select, [contenteditable]') && $('#search-modal').hidden) {
+        event.preventDefault();
+        openModal('search-modal');
+        setTimeout(() => $('#search-input').focus(), 50);
+    }
+
+    if (event.key === 'Escape' && !$('#search-modal').hidden) {
+        closeModal('search-modal');
     }
 });
 
