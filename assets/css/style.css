@@ -1097,6 +1097,12 @@ button.danger:hover {
     padding: 18px 22px;
 }
 
+.modal-header-end {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
 .modal-header h2 {
     color: #0f2147;
     font-size: 20px;

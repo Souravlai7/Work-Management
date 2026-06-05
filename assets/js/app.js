@@ -1046,6 +1046,7 @@ function showTaskDetails(issue, preserveTab = false) {
         issue.start_date ? `Start: ${formatDate(issue.start_date)}` : '',
         issue.completed_date ? `Completed: ${formatDate(issue.completed_date)}` : ''
     ].filter(Boolean).join(' | ');
+    setButtonPermission('#task-details-edit-button', 'task.edit');
     $('#task-time-form').hidden = !can('task.time_log');
     setButtonPermission('#add-time-button', 'task.time_log');
     $('#task-time-form').elements.id.value = issue.id;
@@ -1860,6 +1861,11 @@ $('#task-import-form').addEventListener('submit', async (event) => {
 
 document.querySelectorAll('[data-close-modal]').forEach((button) => {
     button.addEventListener('click', () => closeModal(button.dataset.closeModal));
+});
+
+$('#task-details-edit-button').addEventListener('click', () => {
+    closeModal('task-details-modal');
+    openTaskModal(state.currentIssue);
 });
 
 $('#task-project').addEventListener('change', (event) => {

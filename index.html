@@ -605,7 +605,10 @@
                     <h2 id="task-details-title">Task details</h2>
                     <p id="task-details-description"></p>
                 </div>
-                <button class="icon-button" data-close-modal="task-details-modal" type="button">x</button>
+                <div class="modal-header-end">
+                    <button id="task-details-edit-button" type="button" data-permission="task.edit">Edit</button>
+                    <button class="icon-button" data-close-modal="task-details-modal" type="button">x</button>
+                </div>
             </div>
             <div class="details-modal-body" id="task-details">
                 <form class="details-form" id="task-time-form" hidden>
