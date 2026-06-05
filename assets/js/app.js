@@ -357,7 +357,8 @@ async function loadMoreTasks(projectId, status) {
         ];
         state.taskColumnPages[key] = {
             page: nextPage,
-            hasMore: newIssues.length >= TASK_BATCH_SIZE,
+            hasMore: data.pagination?.has_next === true,
+            total: data.pagination?.total ?? col.total,
             loading: false
         };
     } catch (error) {
@@ -857,11 +858,17 @@ async function loadTasks() {
     state.pagination.projects.page = data.pagination.page;
 
     const columnHasMore = data.column_has_more || {};
+    const columnTotals = data.column_totals || {};
     state.taskColumnPages = {};
     state.projects.forEach((project) => {
         TASK_STATUSES.forEach((status) => {
             const key = taskBatchKey(project.id, status);
-            state.taskColumnPages[key] = { page: 1, hasMore: columnHasMore[key] === true, loading: false };
+            state.taskColumnPages[key] = {
+                page: 1,
+                hasMore: columnHasMore[key] === true,
+                total: columnTotals[key] ?? null,
+                loading: false
+            };
         });
     });
 
@@ -911,10 +918,12 @@ function renderTaskColumn(project, tasks, status) {
             <div class="lazy-task-sentinel" data-project-id="${project.id}" data-status="${escapeHtml(status)}"></div>`;
     }
 
+    const displayTotal = col.total !== null && col.total !== undefined ? col.total : statusTasks.length;
+
     return `<section class="task-column">
         <div class="column-title">
             <span>${escapeHtml(status)}</span>
-            <strong>${statusTasks.length}${col.hasMore ? '+' : ''}</strong>
+            <strong>${displayTotal}</strong>
         </div>
         <div class="task-list">${cards || '<p class="empty-state">No tasks</p>'}${footer}</div>
     </section>`;
