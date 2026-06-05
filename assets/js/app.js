@@ -912,7 +912,7 @@ function downloadCsv(filename, headers, rows) {
 }
 
 async function loadMyTasks() {
-    $('#my-tasks-content').innerHTML = '<p class="empty-state">Loading your tasks…</p>';
+    $('#my-tasks-content').innerHTML = '<div class="loading-tasks"><span class="spinner"></span> Loading your tasks…</div>';
 
     const data = await apiRequest('my.tasks');
 
@@ -932,40 +932,43 @@ async function loadMyTasks() {
     }
 
     const STATUS_GROUPS = [
-        { key: 'open', label: 'Open' },
-        { key: 'in_progress', label: 'In Progress' },
-        { key: 'blocked', label: 'Blocked' },
-        { key: 'todo', label: 'To Do' },
-        { key: 'done', label: 'Done' },
+        { key: 'In Progress', label: 'In Progress' },
+        { key: 'Blocked', label: 'Blocked' },
+        { key: 'Todo', label: 'To Do' },
+        { key: 'Done', label: 'Done' },
     ];
+    const MY_TASKS_LIMIT = 12;
 
     const grouped = {};
     STATUS_GROUPS.forEach(({ key }) => { grouped[key] = []; });
     data.tasks.forEach((task) => {
         if (grouped[task.status] !== undefined) grouped[task.status].push(task);
-        else { grouped._other = grouped._other || []; grouped._other.push(task); }
     });
 
-    const priorityType = { critical: 'warning', high: 'warning', medium: 'neutral', low: 'neutral' };
+    const priorityType = { Critical: 'warning', High: 'warning', Medium: 'neutral', Low: 'neutral' };
 
     const html = STATUS_GROUPS
         .filter(({ key }) => grouped[key]?.length)
         .map(({ key, label }) => {
-            const cards = grouped[key].map((task) => {
+            const all = grouped[key];
+            const visible = all.slice(0, MY_TASKS_LIMIT);
+            const hidden = all.length - visible.length;
+            const cards = visible.map((task) => {
                 const hours = issueTotalHours(task);
                 return `<div class="my-task-card" data-view-task="${task.id}">
                     <div class="my-task-meta">
                         <span class="key-chip">${escapeHtml(task.task_id)}</span>
-                        ${badge(task.priority || 'normal', priorityType[task.priority] || 'neutral')}
+                        ${badge(task.priority || 'Normal', priorityType[task.priority] || 'neutral')}
                         ${hours > 0 ? `<span class="my-task-hours">${hours.toFixed(1)}h</span>` : ''}
                     </div>
                     <p class="my-task-title">${escapeHtml(task.title)}</p>
                     <span class="muted-text my-task-project">${escapeHtml(task.project || 'No project')}</span>
                 </div>`;
-            }).join('');
+            }).join('') + (hidden > 0 ? `<p class="my-tasks-more">+${hidden} more — use Search to find them</p>` : '');
 
+            const cssKey = key.toLowerCase().replace(/\s+/g, '_');
             return `<div class="my-tasks-group">
-                <h3 class="my-tasks-group-title my-tasks-${escapeHtml(key)}">${escapeHtml(label)} <span class="task-count-badge">${grouped[key].length}</span></h3>
+                <h3 class="my-tasks-group-title my-tasks-${cssKey}">${escapeHtml(label)} <span class="task-count-badge">${all.length}</span></h3>
                 <div class="my-tasks-cards">${cards}</div>
             </div>`;
         }).join('');

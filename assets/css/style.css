@@ -441,6 +441,30 @@ table {
     text-align: center;
 }
 
+.loading-tasks {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    font-size: 14px;
+    gap: 10px;
+    padding: 32px 0;
+}
+
+.spinner {
+    animation: spin 0.75s linear infinite;
+    border: 3px solid var(--line);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    display: inline-block;
+    flex-shrink: 0;
+    height: 20px;
+    width: 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 thead {
     background: #f4f6f9;
 }
@@ -1598,7 +1622,6 @@ textarea:hover:not(:focus) {
     text-transform: uppercase;
 }
 
-.my-tasks-open     { border-color: #3b82f6; color: #1d4ed8; }
 .my-tasks-in_progress { border-color: #f59e0b; color: #b45309; }
 .my-tasks-blocked  { border-color: #ef4444; color: #b91c1c; }
 .my-tasks-todo     { border-color: #6b7280; color: #374151; }
@@ -1659,6 +1682,17 @@ textarea:hover:not(:focus) {
 
 .my-task-project {
     font-size: 12px;
+}
+
+.my-tasks-more {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 8px 0 0;
+    padding: 6px 10px;
+    background: #f8fafc;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    width: 100%;
 }
 
 /* ── Overdue Tasks ───────────────────────────────────────────── */
