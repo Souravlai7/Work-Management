@@ -1191,7 +1191,7 @@ function renderTaskColumn(project, tasks, status) {
 
     const displayTotal = col.total !== null && col.total !== undefined ? col.total : statusTasks.length;
 
-    return `<section class="task-column">
+    return `<section class="task-column" data-status="${escapeHtml(status)}" data-project-id="${project.id}">
         <div class="column-title">
             <span>${escapeHtml(status)}</span>
             <strong>${displayTotal}</strong>
@@ -1209,7 +1209,7 @@ function renderTaskCard(issue) {
         can('task.delete') ? `<button class="danger" data-delete-task="${issue.id}" type="button">Delete</button>` : ''
     ].join('');
 
-    return `<article class="task-card">
+    return `<article class="task-card" draggable="${can('task.edit') ? 'true' : 'false'}" data-task-id="${issue.id}">
         <div class="task-key">${escapeHtml(issue.task_id)}</div>
         <h3>${escapeHtml(issue.title)}</h3>
         <div class="task-meta">
@@ -2200,6 +2200,89 @@ $('#project-board').addEventListener('click', async (event) => {
             showMessage(error.message, 'error');
             setLoading(button, false);
         }
+    }
+});
+
+// ── Kanban drag-and-drop ──────────────────────────────────────
+let dragTaskId = null;
+
+$('#project-board').addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.task-card[data-task-id]');
+    if (!card || !can('task.edit')) return;
+    dragTaskId = Number(card.dataset.taskId);
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(dragTaskId));
+});
+
+$('#project-board').addEventListener('dragend', (e) => {
+    const card = e.target.closest('.task-card');
+    if (card) card.classList.remove('dragging');
+    dragTaskId = null;
+    document.querySelectorAll('.task-column.drag-over').forEach((c) => c.classList.remove('drag-over'));
+});
+
+$('#project-board').addEventListener('dragover', (e) => {
+    if (dragTaskId === null) return;
+    const col = e.target.closest('.task-column');
+    if (!col) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+});
+
+$('#project-board').addEventListener('dragenter', (e) => {
+    if (dragTaskId === null) return;
+    const col = e.target.closest('.task-column');
+    if (!col) return;
+    col.classList.add('drag-over');
+});
+
+$('#project-board').addEventListener('dragleave', (e) => {
+    const col = e.target.closest('.task-column');
+    if (!col) return;
+    if (!col.contains(e.relatedTarget)) {
+        col.classList.remove('drag-over');
+    }
+});
+
+$('#project-board').addEventListener('drop', async (e) => {
+    const col = e.target.closest('.task-column');
+    if (!col || dragTaskId === null) return;
+    e.preventDefault();
+    col.classList.remove('drag-over');
+
+    const newStatus = col.dataset.status;
+    const task = state.taskIssues.find((t) => t.id === dragTaskId);
+    if (!task || task.status === newStatus) return;
+
+    const oldStatus = task.status;
+    const oldCompletedDate = task.completed_date;
+    const completedDate = newStatus === 'Done' ? (task.completed_date || todayDate()) : '';
+
+    task.status = newStatus;
+    task.completed_date = completedDate;
+    renderProjectBoard();
+
+    try {
+        await apiRequest('task.save', {
+            id: task.id,
+            task_id: task.task_id,
+            title: task.title,
+            status: newStatus,
+            priority: task.priority,
+            project_id: task.project_id,
+            assignee_ids: task.assignee_ids || [],
+            developer_ids: task.developer_ids || [],
+            start_date: task.start_date || '',
+            completed_date: completedDate,
+            description: task.description || '',
+        });
+        showMessage(`Moved to ${newStatus}.`);
+    } catch (error) {
+        task.status = oldStatus;
+        task.completed_date = oldCompletedDate;
+        renderProjectBoard();
+        showMessage(error.message, 'error');
     }
 });
 
