@@ -1055,6 +1055,24 @@ button.danger:hover {
     background: #ffffff;
 }
 
+.comment-text {
+    color: #44546f;
+    margin: 8px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+}
+
+.comment-link {
+    color: var(--primary);
+    text-decoration: underline;
+    word-break: break-all;
+}
+
+.comment-link:hover {
+    color: #1a56db;
+}
+
 .attachment-list {
     display: flex;
     flex-wrap: wrap;

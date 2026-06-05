@@ -143,6 +143,36 @@ function escapeHtml(value) {
         .replaceAll("'", '&#039;');
 }
 
+function formatCommentText(text) {
+    if (!text) return '';
+    const urlRegex = /https?:\/\/\S+/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    while ((match = urlRegex.exec(text)) !== null) {
+        const fullMatch = match[0];
+        const url = fullMatch.replace(/[.,;:!?)'"]+$/, '');
+        if (match.index > lastIndex) {
+            parts.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+        }
+        parts.push({ type: 'url', value: url });
+        if (url.length < fullMatch.length) {
+            parts.push({ type: 'text', value: fullMatch.slice(url.length) });
+        }
+        lastIndex = match.index + fullMatch.length;
+    }
+    if (lastIndex < text.length) {
+        parts.push({ type: 'text', value: text.slice(lastIndex) });
+    }
+    return parts.map((part) => {
+        if (part.type === 'url') {
+            const href = escapeHtml(part.value);
+            return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="comment-link">${href}</a>`;
+        }
+        return escapeHtml(part.value).replace(/\n/g, '<br>');
+    }).join('');
+}
+
 function formatBytes(bytes) {
     const size = Number(bytes || 0);
 
@@ -1366,7 +1396,7 @@ function renderTaskActivity() {
                 created_at: comment.created_at,
                 html: `<div class="timeline-item comment-item">
                     <div><strong>${escapeHtml(comment.user_name)}</strong> <span>commented ${escapeHtml(formatDateTime(comment.created_at))}</span></div>
-                    ${comment.comment ? `<p>${escapeHtml(comment.comment)}</p>` : ''}
+                    ${comment.comment ? `<div class="comment-text">${formatCommentText(comment.comment)}</div>` : ''}
                     ${renderAttachments(comment.attachments || [])}
                 </div>`
             });
@@ -1433,7 +1463,7 @@ function activityDetails(log) {
     }
 
     if (log.action === 'commented') {
-        return `${changes.comment ? `<p>${escapeHtml(changes.comment)}</p>` : ''}${changes.attachment_count ? `<p>${escapeHtml(changes.attachment_count)} file(s) attached.</p>` : ''}`;
+        return `${changes.comment ? `<div class="comment-text">${formatCommentText(changes.comment)}</div>` : ''}${changes.attachment_count ? `<p>${escapeHtml(changes.attachment_count)} file(s) attached.</p>` : ''}`;
     }
 
     if (log.action === 'created') {
