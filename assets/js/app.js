@@ -54,7 +54,7 @@ const state = {
 };
 
 const TASK_BATCH_SIZE = 20;
-const TASK_STATUSES = ['Todo', 'In Progress', 'Blocked', 'Done'];
+const TASK_STATUSES = ['Todo', 'In Progress', 'Blocked', 'Paused', 'Unsolved', 'Done'];
 let taskLazyObservers = [];
 let lastWorklogData = null;
 let lastDevWorklogData = null;
@@ -934,6 +934,8 @@ async function loadMyTasks() {
     const STATUS_GROUPS = [
         { key: 'In Progress', label: 'In Progress' },
         { key: 'Blocked', label: 'Blocked' },
+        { key: 'Unsolved', label: 'Unsolved' },
+        { key: 'Paused', label: 'Paused' },
         { key: 'Todo', label: 'To Do' },
         { key: 'Done', label: 'Done' },
     ];
@@ -1040,7 +1042,7 @@ async function performSearch(query) {
         }
 
         $('#search-results').innerHTML = data.tasks.map((task) => {
-            const statusType = task.status === 'done' ? 'active' : 'neutral';
+            const statusSlug = String(task.status || '').toLowerCase().replaceAll(' ', '-');
             return `<div class="search-result" data-load-task="${task.id}" role="button" tabindex="0">
                 <div class="search-result-main">
                     <span class="key-chip">${escapeHtml(task.task_id)}</span>
@@ -1048,7 +1050,7 @@ async function performSearch(query) {
                 </div>
                 <div class="search-result-meta">
                     <span class="muted-text">${escapeHtml(task.project || '')}</span>
-                    ${badge(task.status, statusType)}
+                    ${badge(task.status, statusSlug)}
                 </div>
             </div>`;
         }).join('') + `<p class="search-hint">${data.tasks.length} result${data.tasks.length !== 1 ? 's' : ''}</p>`;

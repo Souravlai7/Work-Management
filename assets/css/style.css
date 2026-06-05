@@ -790,12 +790,21 @@ button.danger:hover {
     color: var(--green);
 }
 
-.badge.paused,
 .badge.blocked,
 .badge.high,
 .badge.critical {
     background: #ffeceb;
     color: var(--danger);
+}
+
+.badge.paused {
+    background: #fff7e6;
+    color: #b45309;
+}
+
+.badge.unsolved {
+    background: #f3e8ff;
+    color: #7c3aed;
 }
 
 .badge.in-progress,
@@ -1624,6 +1633,8 @@ textarea:hover:not(:focus) {
 
 .my-tasks-in_progress { border-color: #f59e0b; color: #b45309; }
 .my-tasks-blocked  { border-color: #ef4444; color: #b91c1c; }
+.my-tasks-paused   { border-color: #f59e0b; color: #92400e; }
+.my-tasks-unsolved { border-color: #8b5cf6; color: #5b21b6; }
 .my-tasks-todo     { border-color: #6b7280; color: #374151; }
 .my-tasks-done     { border-color: #10b981; color: #047857; }
 
