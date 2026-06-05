@@ -51,7 +51,7 @@ const state = {
 
 const TASK_BATCH_SIZE = 20;
 const TASK_STATUSES = ['Todo', 'In Progress', 'Blocked', 'Done'];
-let taskLazyObserver = null;
+let taskLazyObservers = [];
 const $ = (selector) => document.querySelector(selector);
 
 function can(permission) {
@@ -346,35 +346,35 @@ function loadMoreTasks(projectId, status) {
 }
 
 function observeTaskSentinels() {
-    if (taskLazyObserver) {
-        taskLazyObserver.disconnect();
-    }
+    taskLazyObservers.forEach((obs) => obs.disconnect());
+    taskLazyObservers = [];
 
     if (!('IntersectionObserver' in window)) {
         return;
     }
 
-    taskLazyObserver = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-            if (!entry.isIntersecting) {
-                return;
-            }
-
-            const target = entry.target;
-            taskLazyObserver.unobserve(target);
-            target.textContent = 'Loading more tasks...';
-            window.setTimeout(() => {
-                loadMoreTasks(Number(target.dataset.projectId), target.dataset.status);
-            }, 180);
-        });
-    }, {
-        root: null,
-        rootMargin: '160px',
-        threshold: 0.1
-    });
-
     document.querySelectorAll('.lazy-task-sentinel').forEach((sentinel) => {
-        taskLazyObserver.observe(sentinel);
+        const scrollRoot = sentinel.closest('.task-list');
+        const obs = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) {
+                    return;
+                }
+
+                obs.unobserve(entry.target);
+                entry.target.textContent = 'Loading more tasks...';
+                window.setTimeout(() => {
+                    loadMoreTasks(Number(entry.target.dataset.projectId), entry.target.dataset.status);
+                }, 180);
+            });
+        }, {
+            root: scrollRoot,
+            rootMargin: '60px',
+            threshold: 0.1
+        });
+
+        obs.observe(sentinel);
+        taskLazyObservers.push(obs);
     });
 }
 
