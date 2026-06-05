@@ -80,18 +80,38 @@ function setButtonPermission(selector, permission) {
 }
 
 function showMessage(message, type = 'flash') {
-    const flash = $('#flash');
-    const error = $('#error');
-    flash.hidden = true;
-    error.hidden = true;
-
     if (!message) {
         return;
     }
 
-    const box = type === 'error' ? error : flash;
-    box.textContent = message;
-    box.hidden = false;
+    const container = $('#toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    const text = document.createElement('span');
+    text.textContent = message;
+
+    const close = document.createElement('button');
+    close.className = 'toast-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.textContent = '×';
+    close.addEventListener('click', () => dismissToast(toast));
+
+    toast.appendChild(text);
+    toast.appendChild(close);
+    container.appendChild(toast);
+
+    setTimeout(() => dismissToast(toast), type === 'error' ? 6000 : 4000);
+}
+
+function dismissToast(toast) {
+    if (!toast.isConnected) {
+        return;
+    }
+
+    toast.classList.add('toast-hiding');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
 }
 
 function setLoading(button, loading) {
@@ -403,11 +423,25 @@ function observeTaskSentinels() {
 }
 
 function openModal(id) {
-    $(`#${id}`).hidden = false;
+    const backdrop = $(`#${id}`);
+    backdrop.classList.remove('modal-closing');
+    backdrop.hidden = false;
+    backdrop.classList.add('modal-opening');
+    setTimeout(() => backdrop.classList.remove('modal-opening'), 260);
 }
 
 function closeModal(id) {
-    $(`#${id}`).hidden = true;
+    const backdrop = $(`#${id}`);
+    if (backdrop.hidden) {
+        return;
+    }
+
+    backdrop.classList.remove('modal-opening');
+    backdrop.classList.add('modal-closing');
+    setTimeout(() => {
+        backdrop.hidden = true;
+        backdrop.classList.remove('modal-closing');
+    }, 160);
 }
 
 async function apiRequest(action, payload = {}) {
@@ -497,7 +531,13 @@ function clearSession() {
 
 function showView(name) {
     document.querySelectorAll('.view').forEach((view) => {
-        view.hidden = view.id !== `${name}-view`;
+        const active = view.id === `${name}-view`;
+        view.hidden = !active;
+
+        if (active) {
+            view.classList.add('view-entering');
+            setTimeout(() => view.classList.remove('view-entering'), 250);
+        }
     });
 }
 
