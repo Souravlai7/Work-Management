@@ -2261,6 +2261,12 @@ $('#project-board').addEventListener('drop', async (e) => {
 
     task.status = newStatus;
     task.completed_date = completedDate;
+
+    const oldKey = taskBatchKey(task.project_id, oldStatus);
+    const newKey = taskBatchKey(task.project_id, newStatus);
+    if (state.taskColumnPages[oldKey]?.total != null) state.taskColumnPages[oldKey].total--;
+    if (state.taskColumnPages[newKey]?.total != null) state.taskColumnPages[newKey].total++;
+
     renderProjectBoard();
 
     try {
@@ -2281,6 +2287,8 @@ $('#project-board').addEventListener('drop', async (e) => {
     } catch (error) {
         task.status = oldStatus;
         task.completed_date = oldCompletedDate;
+        if (state.taskColumnPages[oldKey]?.total != null) state.taskColumnPages[oldKey].total++;
+        if (state.taskColumnPages[newKey]?.total != null) state.taskColumnPages[newKey].total--;
         renderProjectBoard();
         showMessage(error.message, 'error');
     }
@@ -2314,7 +2322,12 @@ $('#task-time-form').addEventListener('submit', async (event) => {
         });
         showMessage('Time logged.');
         await loadTasks();
-        const issue = state.taskIssues.find((item) => Number(item.id) === Number(form.elements.id.value));
+        let issue = state.taskIssues.find((item) => Number(item.id) === Number(form.elements.id.value));
+        if (!issue) {
+            const data = await apiRequest('task.get', { id: Number(form.elements.id.value) });
+            mergeTaskLookupData(data);
+            issue = data.issue;
+        }
         showTaskDetails(issue, true);
     } catch (error) {
         showMessage(error.message, 'error');
@@ -2343,7 +2356,12 @@ $('#task-comment-form').addEventListener('submit', async (event) => {
         });
         showMessage(attachments.length ? 'Comment/files added.' : 'Comment added.');
         await loadTasks();
-        const issue = state.taskIssues.find((item) => Number(item.id) === Number(form.elements.id.value));
+        let issue = state.taskIssues.find((item) => Number(item.id) === Number(form.elements.id.value));
+        if (!issue) {
+            const data = await apiRequest('task.get', { id: Number(form.elements.id.value) });
+            mergeTaskLookupData(data);
+            issue = data.issue;
+        }
         showTaskDetails(issue, true);
     } catch (error) {
         showMessage(error.message, 'error');
