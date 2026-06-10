@@ -1425,6 +1425,7 @@ function renderTaskActivity() {
 
     if (can('task.logs.view') && (state.activityTab === 'all' || state.activityTab === 'history')) {
         (issue.logs || []).forEach((log) => {
+            if (state.activityTab === 'all' && log.action === 'commented') return;
             items.push({
                 type: 'history',
                 created_at: log.created_at,
