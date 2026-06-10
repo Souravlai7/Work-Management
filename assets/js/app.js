@@ -27,6 +27,10 @@ const API_ENDPOINTS = {
     'task.bulk_import': 'tasks/bulk-import',
     'task.time_log': 'tasks/time-log',
     'task.comment': 'tasks/comment',
+    'task.comment.edit': 'tasks/comment-edit',
+    'task.comment.delete': 'tasks/comment-delete',
+    'task.work_log.edit': 'tasks/work-log-edit',
+    'task.work_log.delete': 'tasks/work-log-delete',
     'task.delete': 'tasks/delete',
     'projects.save': 'projects/save',
     'projects.delete': 'projects/delete'
@@ -1398,11 +1402,21 @@ function renderTaskActivity() {
 
     if (state.activityTab === 'all' || state.activityTab === 'comments') {
         (issue.comments || []).forEach((comment) => {
+            const isOwn = Number(comment.user_id) === Number(state.user?.id);
+            const canEdit = can('task.comment.edit') && (isOwn || can('task.edit'));
+            const canDelete = can('task.comment.delete') && (isOwn || can('task.edit'));
+            const commentActions = [
+                canEdit ? `<button class="secondary small-button" data-edit-comment="${comment.id}" type="button">Edit</button>` : '',
+                canDelete ? `<button class="danger small-button" data-delete-comment="${comment.id}" type="button">Delete</button>` : ''
+            ].filter(Boolean).join('');
             items.push({
                 type: 'comment',
                 created_at: comment.created_at,
                 html: `<div class="timeline-item comment-item">
-                    <div><strong>${escapeHtml(comment.user_name)}</strong> <span>commented ${escapeHtml(formatDateTime(comment.created_at))}</span></div>
+                    <div class="item-header">
+                        <div><strong>${escapeHtml(comment.user_name)}</strong> <span>commented ${escapeHtml(formatDateTime(comment.created_at))}</span></div>
+                        ${commentActions ? `<div class="item-actions">${commentActions}</div>` : ''}
+                    </div>
                     ${comment.comment ? `<div class="comment-text">${formatCommentText(comment.comment)}</div>` : ''}
                     ${renderAttachments(comment.attachments || [])}
                 </div>`
@@ -1412,11 +1426,21 @@ function renderTaskActivity() {
 
     if (can('task.time_logs.view') && (state.activityTab === 'all' || state.activityTab === 'work')) {
         (issue.work_logs || []).forEach((entry) => {
+            const isOwn = Number(entry.user_id) === Number(state.user?.id);
+            const canEdit = can('task.work_log.edit') && (isOwn || can('task.edit'));
+            const canDelete = can('task.work_log.delete') && (isOwn || can('task.edit'));
+            const workLogActions = [
+                canEdit ? `<button class="secondary small-button" data-edit-work-log="${entry.id}" type="button">Edit</button>` : '',
+                canDelete ? `<button class="danger small-button" data-delete-work-log="${entry.id}" type="button">Delete</button>` : ''
+            ].filter(Boolean).join('');
             items.push({
                 type: 'work',
                 created_at: entry.created_at || entry.work_date,
                 html: `<div class="timeline-item work-item">
-                    <div><strong>${escapeHtml(entry.worker)}</strong> <span>logged ${escapeHtml(entry.hours)}h on ${escapeHtml(formatDate(entry.work_date))}</span></div>
+                    <div class="item-header">
+                        <div><strong>${escapeHtml(entry.worker)}</strong> <span>logged ${escapeHtml(entry.hours)}h on ${escapeHtml(formatDate(entry.work_date))}</span></div>
+                        ${workLogActions ? `<div class="item-actions">${workLogActions}</div>` : ''}
+                    </div>
                     <p>${escapeHtml(entry.project)}${entry.note ? ` - ${escapeHtml(entry.note)}` : ''}</p>
                 </div>`
             });
@@ -2364,6 +2388,118 @@ $('#task-comment-form').addEventListener('submit', async (event) => {
             issue = data.issue;
         }
         showTaskDetails(issue, true);
+    } catch (error) {
+        showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
+    }
+});
+
+$('#task-activity-list').addEventListener('click', async (event) => {
+    const issue = state.currentIssue;
+    if (!issue) return;
+
+    const editCommentId = event.target.dataset.editComment;
+    const deleteCommentId = event.target.dataset.deleteComment;
+    const editWorkLogId = event.target.dataset.editWorkLog;
+    const deleteWorkLogId = event.target.dataset.deleteWorkLog;
+
+    if (editCommentId) {
+        const comment = (issue.comments || []).find((c) => Number(c.id) === Number(editCommentId));
+        if (!comment) return;
+        const form = $('#edit-comment-form');
+        form.elements.task_id.value = issue.id;
+        form.elements.comment_id.value = comment.id;
+        form.elements.comment.value = comment.comment;
+        openModal('edit-comment-modal');
+    }
+
+    if (deleteCommentId && confirm('Delete this comment?')) {
+        try {
+            await apiRequest('task.comment.delete', { task_id: issue.id, comment_id: Number(deleteCommentId) });
+            showMessage('Comment deleted.');
+            const data = await apiRequest('task.get', { id: issue.id });
+            mergeTaskLookupData(data);
+            state.currentIssue = data.issue;
+            renderTaskActivity();
+        } catch (error) {
+            showMessage(error.message, 'error');
+        }
+    }
+
+    if (editWorkLogId) {
+        const log = (issue.work_logs || []).find((l) => Number(l.id) === Number(editWorkLogId));
+        if (!log) return;
+        const form = $('#edit-work-log-form');
+        form.elements.task_id.value = issue.id;
+        form.elements.work_log_id.value = log.id;
+        form.elements.work_date.value = log.work_date;
+        form.elements.project.value = log.project;
+        form.elements.hours.value = log.hours;
+        form.elements.note.value = log.note || '';
+        openModal('edit-work-log-modal');
+    }
+
+    if (deleteWorkLogId && confirm('Delete this work log?')) {
+        try {
+            await apiRequest('task.work_log.delete', { task_id: issue.id, work_log_id: Number(deleteWorkLogId) });
+            showMessage('Work log deleted.');
+            const data = await apiRequest('task.get', { id: issue.id });
+            mergeTaskLookupData(data);
+            state.currentIssue = data.issue;
+            renderTaskActivity();
+        } catch (error) {
+            showMessage(error.message, 'error');
+        }
+    }
+});
+
+$('#edit-comment-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = $('#save-comment-button');
+    setLoading(button, true);
+
+    try {
+        await apiRequest('task.comment.edit', {
+            task_id: Number(form.elements.task_id.value),
+            comment_id: Number(form.elements.comment_id.value),
+            comment: form.elements.comment.value
+        });
+        showMessage('Comment updated.');
+        closeModal('edit-comment-modal');
+        const data = await apiRequest('task.get', { id: Number(form.elements.task_id.value) });
+        mergeTaskLookupData(data);
+        state.currentIssue = data.issue;
+        renderTaskActivity();
+    } catch (error) {
+        showMessage(error.message, 'error');
+    } finally {
+        setLoading(button, false);
+    }
+});
+
+$('#edit-work-log-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = $('#save-work-log-button');
+    setLoading(button, true);
+
+    try {
+        await apiRequest('task.work_log.edit', {
+            task_id: Number(form.elements.task_id.value),
+            work_log_id: Number(form.elements.work_log_id.value),
+            work_date: form.elements.work_date.value,
+            project: form.elements.project.value,
+            hours: Number(form.elements.hours.value),
+            note: form.elements.note.value
+        });
+        showMessage('Work log updated.');
+        closeModal('edit-work-log-modal');
+        const data = await apiRequest('task.get', { id: Number(form.elements.task_id.value) });
+        mergeTaskLookupData(data);
+        state.currentIssue = data.issue;
+        renderTaskActivity();
     } catch (error) {
         showMessage(error.message, 'error');
     } finally {

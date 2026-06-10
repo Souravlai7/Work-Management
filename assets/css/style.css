@@ -1141,6 +1141,25 @@ button.danger:hover {
     background: #ffffff;
 }
 
+.item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.small-button {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    min-height: unset;
+}
+
 .comment-text {
     color: #44546f;
     margin: 8px 0 0;
